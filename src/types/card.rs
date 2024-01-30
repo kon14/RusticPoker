@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use thiserror::Error;
 
 #[derive(Eq, PartialEq, Clone, Debug, Hash)]
@@ -43,10 +44,10 @@ pub(crate) enum CardSuit {
     Spades,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(Eq, Clone, Debug, Hash)]
 pub(crate) struct Card {
-    rank: CardRank,
-    suit: CardSuit,
+    pub rank: CardRank,
+    pub suit: CardSuit,
 }
 
 #[derive(Error, Debug)]
@@ -101,5 +102,59 @@ impl<'a> TryFrom<&'a str> for Card {
         let rank: CardRank = rank.try_into()?;
         let suit: CardSuit = suit.try_into()?;
         Ok(Card { rank, suit })
+    }
+}
+
+impl Ord for CardRank {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self == other {
+            return Ordering::Equal;
+        }
+        let (mut self_rank, mut other_rank) = (0, 0);
+        for (i, rank) in Self::ORDER.iter().enumerate() {
+            if rank == self {
+                self_rank = i;
+            }
+            if rank == other {
+                other_rank = i;
+            }
+            if self_rank != 0 && other_rank != 0 {
+                break;
+            }
+        }
+        if self_rank < other_rank {
+            Ordering::Greater
+        } else {
+            Ordering::Less
+        }
+    }
+}
+
+impl PartialOrd<Self> for CardRank {
+    // https://github.com/rust-lang/rust/issues/63104
+    // https://github.com/rust-lang/rfcs/pull/1028
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl PartialEq for Card {
+    // "AH" == "AC"
+    fn eq(&self, other: &Self) -> bool {
+        self.rank == other.rank
+    }
+}
+
+impl Ord for Card {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.rank.cmp(&other.rank)
+    }
+}
+
+impl PartialOrd<Self> for Card {
+    // https://github.com/rust-lang/rust/issues/63104
+    // https://github.com/rust-lang/rfcs/pull/1028
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
     }
 }
