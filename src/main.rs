@@ -43,4 +43,41 @@ fn main() {
     } else {
         println!("{:?} < {:?}", HandRank::FullHouse, HandRank::RoyalFlush);
     }
+    // HandRank
+    let cards = [
+      Card::try_from("10C").unwrap(),
+      Card::try_from("10D").unwrap(),
+      Card::try_from("10C").unwrap(),
+      Card::try_from("10D").unwrap(),
+      Card::try_from("AH").unwrap(),
+    ];
+    let hand_rank: HandRank = cards.into();
+    println!("{:?}", hand_rank);
+    let cards = [
+        Card::try_from("AC").unwrap(),
+        Card::try_from("KS").unwrap(),
+        Card::try_from("QD").unwrap(),
+        Card::try_from("JC").unwrap(),
+        Card::try_from("10H").unwrap(),
+    ];
+    let hand_rank: HandRank = cards.into();
+    println!("{:?}", hand_rank);
+    let cards = [
+        Card::try_from("AS").unwrap(),
+        Card::try_from("2C").unwrap(),
+        Card::try_from("3D").unwrap(),
+        Card::try_from("4D").unwrap(),
+        Card::try_from("5C").unwrap(),
+    ];
+    let hand_rank: HandRank = cards.into();
+    println!("{:?}", hand_rank);
+    let cards = [
+        Card::try_from("AS").unwrap(),
+        Card::try_from("2C").unwrap(),
+        Card::try_from("KD").unwrap(),
+        Card::try_from("QD").unwrap(),
+        Card::try_from("JC").unwrap(),
+    ];
+    let hand_rank: HandRank = cards.into();
+    println!("{:?}", hand_rank);
 }
