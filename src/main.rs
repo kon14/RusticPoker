@@ -1,6 +1,6 @@
 use crate::types::{
     card::Card,
-    hand::HandRank,
+    hand::{Hand, HandRank},
 };
 
 mod types;
@@ -80,4 +80,11 @@ fn main() {
     ];
     let hand_rank: HandRank = cards.into();
     println!("{:?}", hand_rank);
+    // Hand
+    let h1: Hand = "AS KS QS JS 10S".try_into().unwrap();
+    let h2: Hand = "AS 2S 3S 4S 5S".try_into().unwrap();
+    // let h4: Hand = "AS KS QS JS".try_into().unwrap();
+    // let h5: Hand = "AS KS QS JS 10S 9S".try_into().unwrap();
+    println!("{:?}", h1);
+    println!("{:?}", h2);
 }
