@@ -41,7 +41,7 @@ impl PartialEq for Card {
 
 impl Ord for Card {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.rank.cmp(&other.rank)
+        Ord::cmp(&self.rank, &other.rank)
     }
 }
 

@@ -88,6 +88,50 @@ impl PartialOrd<Self> for CardRank {
     // https://github.com/rust-lang/rust/issues/63104
     // https://github.com/rust-lang/rfcs/pull/1028
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(Ord::cmp(&self, &other))
+    }
+}
+
+impl Iterator for CardRank {
+    type Item = CardRank;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            CardRank::Two => Some(CardRank::Three),
+            CardRank::Three => Some(CardRank::Four),
+            CardRank::Four => Some(CardRank::Five),
+            CardRank::Five => Some(CardRank::Six),
+            CardRank::Six => Some(CardRank::Seven),
+            CardRank::Seven => Some(CardRank::Eight),
+            CardRank::Eight => Some(CardRank::Nine),
+            CardRank::Nine => Some(CardRank::Ten),
+            CardRank::Ten => Some(CardRank::Jack),
+            CardRank::Jack => Some(CardRank::Queen),
+            CardRank::Queen => Some(CardRank::King),
+            CardRank::King => Some(CardRank::Ace),
+            CardRank::Ace => None,
+        }
+    }
+}
+
+impl<'a> Iterator for &'a CardRank {
+    type Item = &'a CardRank;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            CardRank::Two => Some(&CardRank::Three),
+            CardRank::Three => Some(&CardRank::Four),
+            CardRank::Four => Some(&CardRank::Five),
+            CardRank::Five => Some(&CardRank::Six),
+            CardRank::Six => Some(&CardRank::Seven),
+            CardRank::Seven => Some(&CardRank::Eight),
+            CardRank::Eight => Some(&CardRank::Nine),
+            CardRank::Nine => Some(&CardRank::Ten),
+            CardRank::Ten => Some(&CardRank::Jack),
+            CardRank::Jack => Some(&CardRank::Queen),
+            CardRank::Queen => Some(&CardRank::King),
+            CardRank::King => Some(&CardRank::Ace),
+            CardRank::Ace => None,
+        }
     }
 }
