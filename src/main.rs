@@ -87,4 +87,23 @@ fn main() {
     // let h5: Hand = "AS KS QS JS 10S 9S".try_into().unwrap();
     println!("{:?}", h1);
     println!("{:?}", h2);
+    let hands = [
+        "AS KS QS JS 10S",  // Royal Flush",
+        "9S 8S 7S 6S 5S",   // Straight Flush",
+        "2H 2S 2D 2C 9S",   // Four of a Kind",
+        "KH KD 5S 5D 5C",   // Full House",
+        "3D 7D 9D JD AD",   // Flush",
+        "8C 9D 10H JS QS",  // Straight",
+        "7H 7S 7D AC 2H" ,  // Three of a Kind",
+        "AH AD 3S 3H 6C",   // Two Pair",
+        "10S 10H 8D 7C 2S", // Pair",
+        "QD 9H 7C 5S 3H",   // High Card",
+    ];
+    let hands: [Hand; 10] = hands
+        .into_iter()
+        .map(|h| h.try_into().unwrap())
+        .collect::<Vec<Hand>>()
+        .try_into()
+        .unwrap();
+    println!("{:?}", hands);
 }
