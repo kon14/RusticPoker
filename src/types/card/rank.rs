@@ -135,3 +135,21 @@ impl<'a> Iterator for &'a CardRank {
         }
     }
 }
+
+pub(crate) trait ShiftAce {
+    fn shift_ace(&self) -> Option<Self> where Self: Sized;
+}
+
+impl ShiftAce for Vec<CardRank> {
+    /// Provided source contains an ace, returns a low-ace, asc-sorted vector of card ranks.
+    fn shift_ace(&self) -> Option<Self> {
+        if !self.contains(&CardRank::Ace) {
+            return None;
+        }
+        let mut ranks = self.clone();
+        ranks.sort();
+        let ace = ranks.pop().unwrap();
+        ranks.insert(0, ace);
+        Some(ranks)
+    }
+}

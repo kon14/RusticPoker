@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use crate::types::card::{Card, CardRank, CardSuit};
+use crate::types::card::{Card, CardRank, CardSuit, ShiftAce};
 
 #[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub(crate) enum HandRank {
@@ -104,8 +104,7 @@ impl From<[Card; 5]> for HandRank {
 
             fn test_straight(mut ranks: Vec<CardRank>, low_ace: bool) -> bool {
                 if low_ace {
-                    let ace = ranks.pop().unwrap();
-                    ranks.insert(0, ace);
+                    ranks = ranks.shift_ace().unwrap();
                 }
                 for ranks in ranks.windows(2) {
                     let next_actual = match ranks[0].clone().next() {
