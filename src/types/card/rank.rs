@@ -153,3 +153,26 @@ impl ShiftAce for Vec<CardRank> {
         Some(ranks)
     }
 }
+
+pub(crate) trait GroupByRank {
+    fn group_by_rank(&self) -> Vec<Self> where Self: Sized;
+}
+
+impl GroupByRank for Vec<CardRank> {
+    fn group_by_rank(&self) -> Vec<Self> {
+        let mut result = Vec::new();
+        let mut current_group = Vec::new();
+        let mut ranks = self.clone();
+        ranks.sort();
+        for (i, rank) in ranks.iter().enumerate() {
+            if i > 0 && *rank != ranks[i - 1] {
+                result.push(std::mem::replace(&mut current_group, Vec::new()));
+            }
+            current_group.push(rank.clone());
+        }
+        if !current_group.is_empty() {
+            result.push(current_group);
+        }
+        result
+    }
+}
