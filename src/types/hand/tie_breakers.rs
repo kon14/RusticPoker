@@ -3,7 +3,7 @@ use crate::types::card::CardRank;
 
 /// Tuple structs containing tie-breaker card ranks and vectors of card ranks.
 /// Vector elements are sorted in descending order of priority.
-#[derive(Eq, PartialEq, Debug, Hash)]
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub(crate) enum TieBreakers {
     // Kickers, Pairs and Sets for each HandRank
     StraightFlush(CardRank),     // top card

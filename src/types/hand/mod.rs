@@ -3,13 +3,14 @@ mod tie_breakers;
 
 pub(crate) use rank::*;
 
+use std::cmp::Ordering;
 use thiserror::Error;
 use crate::types::{
     card::{Card, CardRank, ShiftAce, GroupByRank},
     hand::tie_breakers::TieBreakers,
 };
 
-#[derive(Eq, PartialEq, Debug, Hash)]
+#[derive(Eq, Clone, Debug, Hash)]
 pub(crate) struct Hand {
     raw_hand_str: String, // eg: "AD KD QD JD 10D"
     cards: [Card; 5],
@@ -135,5 +136,73 @@ impl TryFrom<&str> for Hand {
                 },
             }
         }
+    }
+}
+
+impl PartialEq for Hand {
+    // "AS KS QS JS 10S" == "AH KH QH JH 10H"
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Ord for Hand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.rank != other.rank || (self.tie_breakers.is_none()) {
+            // No tie-breaking for non-equal hand ranks or RoyalFlush
+            self.rank.cmp(&other.rank)
+        } else {
+            self.tie_breakers.partial_cmp(&other.tie_breakers).unwrap()
+        }
+    }
+}
+
+impl PartialOrd<Self> for Hand {
+    // https://github.com/rust-lang/rust/issues/63104
+    // https://github.com/rust-lang/rfcs/pull/1028
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::seq::SliceRandom;
+    #[test]
+    fn cmp() {
+        let royal_flush: Hand = "AS KS QS JS 10S".try_into().unwrap();
+        let straight_flush: Hand = "9S 8S 7S 6S 5S".try_into().unwrap();
+        let four_of_a_kind: Hand = "2H 2S 2D 2C 9S".try_into().unwrap();
+        let full_house: Hand = "KH KD 5S 5D 5C".try_into().unwrap();
+        let flush: Hand = "3D 7D 9D JD AD".try_into().unwrap();
+        let straight: Hand = "8C 9D 10H JS QS".try_into().unwrap();
+        let three_of_a_kind: Hand = "7H 7S 7D AC 2H" .try_into().unwrap();
+        let two_pair: Hand = "AH AD 3S 3H 6C".try_into().unwrap();
+        let pair: Hand = "10S 10H 8D 7C 2S".try_into().unwrap();
+        let high_card: Hand = "QD 9H 7C 5S 3H".try_into().unwrap();
+        let hands_sorted = [
+            royal_flush,
+            straight_flush,
+            four_of_a_kind,
+            full_house,
+            flush,
+            straight,
+            three_of_a_kind,
+            two_pair.clone(),
+            pair,
+            high_card.clone(),
+        ];
+        let mut hands_rand = hands_sorted.clone();
+        let mut rng = rand::thread_rng();
+        hands_rand.shuffle(&mut rng);
+        hands_rand.sort_by(|a, b| b.cmp(a));
+        assert_eq!(hands_sorted, hands_rand);
+        let royal_flush_s: Hand = "AS KS QS JS 10S".try_into().unwrap();
+        let royal_flush_h: Hand = "AH KH QH JH 10H".try_into().unwrap();
+        assert_eq!(royal_flush_s, royal_flush_h);
+        let two_pair_high: Hand = "AH AD 3S 3H 6C".try_into().unwrap();
+        let two_pair_low: Hand = "AH AD 2S 2H 9C".try_into().unwrap();
+        assert_eq!(Ord::cmp(&two_pair_high, &two_pair_low), Ordering::Greater);
     }
 }

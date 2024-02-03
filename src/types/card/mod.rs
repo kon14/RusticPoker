@@ -49,6 +49,6 @@ impl PartialOrd<Self> for Card {
     // https://github.com/rust-lang/rust/issues/63104
     // https://github.com/rust-lang/rfcs/pull/1028
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
