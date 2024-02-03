@@ -1,7 +1,7 @@
 mod rank;
-pub(crate) use rank::*;
-
 mod suit;
+
+pub(crate) use rank::*;
 pub(crate) use suit::*;
 
 use std::cmp::Ordering;

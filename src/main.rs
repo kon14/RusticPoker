@@ -1,10 +1,9 @@
+mod types;
+
 use crate::types::{
     card::Card,
     hand::{Hand, HandRank},
 };
-
-mod types;
-mod utils;
 
 fn main() {
     // Card
