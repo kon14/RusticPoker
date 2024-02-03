@@ -1,108 +1,56 @@
 mod types;
+mod proto {
+    include!("./proto/gen/rustic_poker.rs");
+}
 
-use crate::types::{
-    card::Card,
-    hand::{Hand, HandRank},
+use std::env;
+use tonic::{transport::Server, Request, Response, Status};
+use proto::{
+    rustic_poker_server::{RusticPoker, RusticPokerServer},
+    RateHandsRequest,
+    RateHandsResponse,
 };
+use crate::types::hand::Hand;
 
-fn main() {
-    // Card
-    let raw_card = "AS"; // Ace of Spades
-    let card_as = Card::try_from(raw_card).unwrap();
-    let raw_card = "AH"; // Ace of Hearts
-    let card_ah = Card::try_from(raw_card).unwrap();
-    let raw_card = "2C"; // Two of Clubs
-    let card_2c = Card::try_from(raw_card).unwrap();
-    if card_as == card_ah {
-        println!("{:?} == {:?}", card_as, card_ah);
-    } else if card_as > card_ah {
-        println!("{:?} > {:?}", card_as, card_ah);
-    } else {
-        println!("{:?} < {:?}", card_as, card_ah);
+#[derive(Debug, Default)]
+pub struct RusticPokerService {}
+
+#[tonic::async_trait]
+impl RusticPoker for RusticPokerService {
+    async fn rate_hands(&self, request: Request<RateHandsRequest>) -> Result<Response<RateHandsResponse>, Status> {
+        let RateHandsRequest { hands } = request.into_inner();
+        if hands.len() == 0 {
+            return Err(Status::new(tonic::Code::InvalidArgument, "No poker hands provided!"));
+        }
+        let hands: Result<Vec<Hand>, _> = hands
+            .into_iter()
+            .map(|h| h.as_str().try_into())
+            .collect();
+        let Ok(mut hands) = hands else {
+            return Err(Status::new(tonic::Code::InvalidArgument, "Invalid poker hands!"));
+        };
+        hands.sort_by(|a, b| b.cmp(a));
+        let top_hand = hands[0].clone();
+        let mut top_hands: Vec<Hand> = vec![];
+        for hand in hands.into_iter() {
+            if hand == top_hand {
+                top_hands.push(hand);
+            }
+        }
+        let winners = top_hands.into_iter().map(|h| h.raw_hand_str).collect();
+        Ok(Response::new(RateHandsResponse { winners }))
     }
-    if card_as == card_2c {
-        println!("{:?} == {:?}", card_as, card_2c);
-    } else if card_as > card_2c {
-        println!("{:?} > {:?}", card_as, card_2c);
-    } else {
-        println!("{:?} < {:?}", card_as, card_2c);
-    }
-    // HandRank
-    if HandRank::FullHouse == HandRank::FullHouse {
-        println!("{:?} == {:?}", HandRank::FullHouse, HandRank::FullHouse);
-    } else if HandRank::FullHouse > HandRank::FullHouse {
-        println!("{:?} > {:?}", HandRank::FullHouse, HandRank::FullHouse);
-    } else {
-        println!("{:?} < {:?}", HandRank::FullHouse, HandRank::FullHouse);
-    }
-    if HandRank::FullHouse == HandRank::RoyalFlush {
-        println!("{:?} == {:?}", HandRank::FullHouse, HandRank::RoyalFlush);
-    } else if HandRank::FullHouse > HandRank::RoyalFlush {
-        println!("{:?} > {:?}", HandRank::FullHouse, HandRank::RoyalFlush);
-    } else {
-        println!("{:?} < {:?}", HandRank::FullHouse, HandRank::RoyalFlush);
-    }
-    // HandRank
-    let cards = [
-      Card::try_from("10C").unwrap(),
-      Card::try_from("10D").unwrap(),
-      Card::try_from("10C").unwrap(),
-      Card::try_from("10D").unwrap(),
-      Card::try_from("AH").unwrap(),
-    ];
-    let hand_rank: HandRank = cards.into();
-    println!("{:?}", hand_rank);
-    let cards = [
-        Card::try_from("AC").unwrap(),
-        Card::try_from("KS").unwrap(),
-        Card::try_from("QD").unwrap(),
-        Card::try_from("JC").unwrap(),
-        Card::try_from("10H").unwrap(),
-    ];
-    let hand_rank: HandRank = cards.into();
-    println!("{:?}", hand_rank);
-    let cards = [
-        Card::try_from("AS").unwrap(),
-        Card::try_from("2C").unwrap(),
-        Card::try_from("3D").unwrap(),
-        Card::try_from("4D").unwrap(),
-        Card::try_from("5C").unwrap(),
-    ];
-    let hand_rank: HandRank = cards.into();
-    println!("{:?}", hand_rank);
-    let cards = [
-        Card::try_from("AS").unwrap(),
-        Card::try_from("2C").unwrap(),
-        Card::try_from("KD").unwrap(),
-        Card::try_from("QD").unwrap(),
-        Card::try_from("JC").unwrap(),
-    ];
-    let hand_rank: HandRank = cards.into();
-    println!("{:?}", hand_rank);
-    // Hand
-    let h1: Hand = "AS KS QS JS 10S".try_into().unwrap();
-    let h2: Hand = "AS 2S 3S 4S 5S".try_into().unwrap();
-    // let h4: Hand = "AS KS QS JS".try_into().unwrap();
-    // let h5: Hand = "AS KS QS JS 10S 9S".try_into().unwrap();
-    println!("{:?}", h1);
-    println!("{:?}", h2);
-    let hands = [
-        "AS KS QS JS 10S",  // Royal Flush",
-        "9S 8S 7S 6S 5S",   // Straight Flush",
-        "2H 2S 2D 2C 9S",   // Four of a Kind",
-        "KH KD 5S 5D 5C",   // Full House",
-        "3D 7D 9D JD AD",   // Flush",
-        "8C 9D 10H JS QS",  // Straight",
-        "7H 7S 7D AC 2H" ,  // Three of a Kind",
-        "AH AD 3S 3H 6C",   // Two Pair",
-        "10S 10H 8D 7C 2S", // Pair",
-        "QD 9H 7C 5S 3H",   // High Card",
-    ];
-    let hands: [Hand; 10] = hands
-        .into_iter()
-        .map(|h| h.try_into().unwrap())
-        .collect::<Vec<Hand>>()
-        .try_into()
-        .unwrap();
-    println!("{:?}", hands);
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let port = env::var("GRPC_PORT").unwrap_or(String::from("55100"));
+    let address = format!("0.0.0.0:{}", port).parse().unwrap();
+    let rustic_poker_service = RusticPokerService::default();
+    let server = Server::builder()
+        .add_service(RusticPokerServer::new(rustic_poker_service))
+        .serve(address);
+    println!("RusticPoker gRPC server running at 0.0.0.0:{}", port);
+    server.await?;
+    Ok(())
 }

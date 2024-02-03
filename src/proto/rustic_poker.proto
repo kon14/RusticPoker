@@ -1,0 +1,14 @@
+syntax = 'proto3';
+package rustic_poker;
+
+message RateHandsRequest {
+  repeated string hands = 1;
+}
+
+message RateHandsResponse {
+  repeated string winners = 1;
+}
+
+service RusticPoker {
+  rpc RateHands(RateHandsRequest) returns (RateHandsResponse);
+}

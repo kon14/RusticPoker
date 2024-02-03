@@ -1,6 +1,9 @@
 # Rust
 /target
 
+# Proto Code Generation
+/src/proto/gen
+
 # IDE
 .idea
 .vscode

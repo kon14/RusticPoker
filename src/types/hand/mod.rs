@@ -12,9 +12,9 @@ use crate::types::{
 
 #[derive(Eq, Clone, Debug, Hash)]
 pub(crate) struct Hand {
-    raw_hand_str: String, // eg: "AD KD QD JD 10D"
-    cards: [Card; 5],
-    rank: HandRank,
+    pub raw_hand_str: String, // eg: "AD KD QD JD 10D"
+    pub cards: [Card; 5],
+    pub rank: HandRank,
     tie_breakers: Option<TieBreakers>,
 }
 

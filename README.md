@@ -9,3 +9,9 @@
 <hr />
 
 The server utilizes gRPC and the implementation is free and open-source.
+
+## Environment Variables 📃 <a name="env-vars"></a>
+
+|  Variable   | Description                                                    | Required | Default | Example |
+|:-----------:|:---------------------------------------------------------------|:--------:|:-------:|:-------:|
+| `GRPC_PORT` | Specifies the port number that the gRPC server will listen on. |  False   | `55100` | `55101` |
