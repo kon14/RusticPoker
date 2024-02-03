@@ -10,7 +10,21 @@
 
 The server utilizes gRPC and the implementation is free and open-source.
 
+## Building 🔨 <a name="building"></a>
+
+``` bash
+docker build -t rustic-poker .
+```
+
+## Running 💻 <a name="running"></a>
+
+``` bash
+docker run --name=rustic-poker -p 55100:55100 rustic-poker
+```
+
 ## Environment Variables 📃 <a name="env-vars"></a>
+
+_Note: Host envs won't propagate inside the container._
 
 |  Variable   | Description                                                    | Required | Default | Example |
 |:-----------:|:---------------------------------------------------------------|:--------:|:-------:|:-------:|
