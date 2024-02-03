@@ -56,9 +56,6 @@ impl From<[Card; 5]> for HandRank {
         }
 
         fn is_royal_flush(cards: &[Card; 5]) -> bool {
-            if !is_flush(cards) {
-                return false;
-            }
             let mut ranks: Vec<CardRank> = cards.iter().map(|card| card.rank.clone()).collect();
             ranks.sort_by(|a, b| Ord::cmp(b, a));
             ranks == vec![CardRank::Ace, CardRank::King, CardRank::Queen, CardRank::Jack, CardRank::Ten]
