@@ -10,7 +10,7 @@ use proto::{
     RateHandsRequest,
     RateHandsResponse,
 };
-use crate::types::hand::Hand;
+use crate::types::hand::{Hand, RateHands};
 
 #[derive(Debug, Default)]
 pub struct RusticPokerService {}
@@ -19,25 +19,20 @@ pub struct RusticPokerService {}
 impl RusticPoker for RusticPokerService {
     async fn rate_hands(&self, request: Request<RateHandsRequest>) -> Result<Response<RateHandsResponse>, Status> {
         let RateHandsRequest { hands } = request.into_inner();
-        if hands.len() == 0 {
+        if hands.is_empty() {
             return Err(Status::new(tonic::Code::InvalidArgument, "No poker hands provided!"));
         }
         let hands: Result<Vec<Hand>, _> = hands
             .into_iter()
             .map(|h| h.as_str().try_into())
             .collect();
-        let Ok(mut hands) = hands else {
+        let Ok(hands) = hands else {
             return Err(Status::new(tonic::Code::InvalidArgument, "Invalid poker hands!"));
         };
-        hands.sort_by(|a, b| b.cmp(a));
-        let top_hand = hands[0].clone();
-        let mut top_hands: Vec<Hand> = vec![];
-        for hand in hands.into_iter() {
-            if hand == top_hand {
-                top_hands.push(hand);
-            }
-        }
-        let winners = top_hands.into_iter().map(|h| h.raw_hand_str).collect();
+        let winners = hands.determine_winners()
+            .into_iter()
+            .map(|h| h.raw_hand_str)
+            .collect();
         Ok(Response::new(RateHandsResponse { winners }))
     }
 }

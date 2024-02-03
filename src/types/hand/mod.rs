@@ -165,6 +165,28 @@ impl PartialOrd<Self> for Hand {
     }
 }
 
+pub(crate) trait RateHands {
+    fn determine_winners(&self) -> Self;
+}
+
+impl RateHands for Vec<Hand> {
+    fn determine_winners(&self) -> Self {
+        if self.len() == 0 {
+            return vec![];
+        }
+        let mut hands = self.clone();
+        hands.sort_by(|a, b| b.cmp(a));
+        let top_hand = hands[0].clone();
+        let mut top_hands: Vec<Hand> = vec![];
+        for hand in hands.into_iter() {
+            if hand == top_hand {
+                top_hands.push(hand);
+            }
+        }
+        top_hands
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
