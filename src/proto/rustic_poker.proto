@@ -2,7 +2,7 @@ syntax = 'proto3';
 package rustic_poker;
 
 message RateHandsRequest {
-  repeated string hands = 1;
+  repeated string hands = 1; // hand format: "AD KD QD JD 10D"
 }
 
 message RateHandsResponse {

@@ -5,6 +5,7 @@ pub(crate) use rank::*;
 
 use std::cmp::Ordering;
 use thiserror::Error;
+use itertools::Itertools;
 use crate::types::{
     card::{Card, CardRank, ShiftAce, GroupByRank},
     hand::tie_breakers::TieBreakers,
@@ -171,7 +172,7 @@ pub(crate) trait RateHands {
 
 impl RateHands for Vec<Hand> {
     fn determine_winners(&self) -> Self {
-        if self.len() == 0 {
+        if self.is_empty() {
             return vec![];
         }
         let mut hands = self.clone();
@@ -183,7 +184,7 @@ impl RateHands for Vec<Hand> {
                 top_hands.push(hand);
             }
         }
-        top_hands
+        top_hands.into_iter().unique().collect()
     }
 }
 
@@ -226,5 +227,27 @@ mod tests {
         let two_pair_high: Hand = "AH AD 3S 3H 6C".try_into().unwrap();
         let two_pair_low: Hand = "AH AD 2S 2H 9C".try_into().unwrap();
         assert_eq!(Ord::cmp(&two_pair_high, &two_pair_low), Ordering::Greater);
+    }
+    #[test]
+    fn determine_winners() {
+        let hands = vec![
+            "AS KS QS JS 10S",
+            "AS KS QS JS 10S",
+            "10S JS QS KS AS",
+            "9S 8S 7S 6S 5S",
+            "2H 2S 2D 2C 9S",
+        ];
+        let hands: Vec<Hand> = hands
+            .into_iter()
+            .map(|h| h.try_into().unwrap())
+            .collect();
+        let winners: Vec<String> = hands.determine_winners()
+            .into_iter()
+            .map(|h| h.raw_hand_str)
+            .collect();
+        assert_eq!(
+          winners,
+          vec![String::from("AS KS QS JS 10S"), String::from("10S JS QS KS AS")],
+        );
     }
 }
