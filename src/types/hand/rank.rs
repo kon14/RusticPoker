@@ -1,6 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use crate::types::card::{Card, CardRank, CardSuit, ShiftAce};
+use itertools::Itertools;
+use crate::types::{
+    card::{Card, CardRank, CardSuit, ShiftAce},
+    hand::HandParseError,
+};
 
 #[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub(crate) enum HandRank {
@@ -31,28 +35,36 @@ impl HandRank {
     ];
 }
 
-impl From<[Card; 5]> for HandRank {
-    fn from(value: [Card; 5]) -> Self {
-        if is_royal_flush(&value) {
-            return HandRank::RoyalFlush;
+impl TryFrom<[Card; 5]> for HandRank {
+    type Error = HandParseError;
+    fn try_from(value: [Card; 5]) -> Result<Self, Self::Error> {
+        if has_dupes(&value) {
+            return Err(Self::Error::InvalidCards);
+        } else if is_royal_flush(&value) {
+            return Ok(HandRank::RoyalFlush);
         } else if is_straight_flush(&value) {
-            return HandRank::StraightFlush;
+            return Ok(HandRank::StraightFlush);
         } else if is_four_of_a_kind(&value) {
-            return HandRank::FourOfAKind;
+            return Ok(HandRank::FourOfAKind);
         } else if is_full_house(&value) {
-            return HandRank::FullHouse;
+            return Ok(HandRank::FullHouse);
         } else if is_flush(&value) {
-            return HandRank::Flush;
+            return Ok(HandRank::Flush);
         } else if is_straight(&value) {
-            return HandRank::Straight;
+            return Ok(HandRank::Straight);
         } else if is_three_of_a_kind(&value) {
-            return HandRank::ThreeOfAKind;
+            return Ok(HandRank::ThreeOfAKind);
         } else if is_two_pair(&value) {
-            return HandRank::TwoPair;
+            return Ok(HandRank::TwoPair);
         } else if is_pair(&value) {
-            return HandRank::Pair;
+            return Ok(HandRank::Pair);
         } else {
-            return HandRank::HighCard;
+            return Ok(HandRank::HighCard);
+        }
+
+        fn has_dupes(cards: &[Card; 5]) -> bool {
+            let unique = cards.iter().unique();
+            cards.len() != unique.count()
         }
 
         fn is_royal_flush(cards: &[Card; 5]) -> bool {
@@ -213,5 +225,34 @@ impl PartialOrd for HandRank {
     // https://github.com/rust-lang/rfcs/pull/1028
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn from_card_arr() {
+        let cards = [
+            Card { rank: CardRank::Ace, suit: CardSuit::Diamonds },
+            Card { rank: CardRank::Ace, suit: CardSuit::Hearts },
+            Card { rank: CardRank::Ace, suit: CardSuit::Spades },
+            Card { rank: CardRank::Ace, suit: CardSuit::Clubs },
+            Card { rank: CardRank::Ten, suit: CardSuit::Diamonds },
+        ];
+        let hand_rank: Result<HandRank, _> = cards.try_into();
+        assert_eq!(hand_rank, Ok(HandRank::FourOfAKind));
+    }
+    #[test]
+    fn from_card_arr_fail_dupes() {
+        let cards = [
+            Card { rank: CardRank::Ace, suit: CardSuit::Diamonds },
+            Card { rank: CardRank::Ace, suit: CardSuit::Hearts },
+            Card { rank: CardRank::Ace, suit: CardSuit::Spades },
+            Card { rank: CardRank::Ace, suit: CardSuit::Clubs },
+            Card { rank: CardRank::Ace, suit: CardSuit::Diamonds },
+        ];
+        let hand_rank: Result<HandRank, _> = cards.try_into();
+        assert_eq!(hand_rank, Err(HandParseError::InvalidCards));
     }
 }

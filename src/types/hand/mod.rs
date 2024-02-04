@@ -18,7 +18,7 @@ pub(crate) struct Hand {
     tie_breakers: Option<TieBreakers>,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, PartialEq, Debug)]
 pub(crate) enum HandParseError {
     #[error("Invalid hand cards")]
     InvalidCards,
@@ -41,7 +41,7 @@ impl TryFrom<&str> for Hand {
             Ok(array) => array,
             Err(_) => unreachable!(),
         };
-        let rank: HandRank = cards.clone().into();
+        let rank: HandRank = cards.clone().try_into()?;
         let tie_breakers = get_tie_breakers(&rank, &cards);
         return Ok(Self {
             raw_hand_str: value.into(),
