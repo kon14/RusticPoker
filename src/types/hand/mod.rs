@@ -175,6 +175,9 @@ impl RateHands for Vec<Hand> {
         if self.is_empty() {
             return vec![];
         }
+        if self.len() == 1 {
+            return self.clone();
+        }
         let mut hands = self.clone();
         hands.sort_by(|a, b| b.cmp(a));
         let top_hand = hands[0].clone();
