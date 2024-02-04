@@ -10,6 +10,7 @@ tonic = "0.10.2"
 prost = "0.12.3"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
 itertools = "0.12.1"
+tonic-reflection = "0.10.2"
 
 [build-dependencies]
 tonic-build = "0.10.2"

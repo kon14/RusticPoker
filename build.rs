@@ -4,6 +4,7 @@ use std::path::Path;
 const PROTO_WATCH: &str = "/src/proto";
 const PROTO_PATH: &str = "src/proto/rustic_poker.proto";
 const PROTO_GEN_PATH: &str = "src/proto/gen";
+const FILE_DESCRIPTOR_PATH: &str = "src/proto/gen/rustic_poker_descriptor.bin";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     prepare();
@@ -24,6 +25,7 @@ fn build_protos() {
         .build_server(true)
         .build_client(false)
         .out_dir(PROTO_GEN_PATH)
+        .file_descriptor_set_path(FILE_DESCRIPTOR_PATH)
         .compile(&[PROTO_PATH], &[PROTO_WATCH])
         .unwrap();
 }
