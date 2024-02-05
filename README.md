@@ -67,7 +67,7 @@ Regarding the 2 cases of `Quads(2), Kicker(6)`, we have:<br />
 -2x str-duplicated representations of: `Quads(2), Kicker(6S)`<br />
 -2x card-shuffled representations of: `Quads(2), Kicker(6H)`<br />
 
-Both the `Two Pairs` hand the `Four of a Kind` with the lowest kicker get eliminated.<br />
+Both the `Two Pairs` hand and the `Four of a Kind` with the lowest kicker get eliminated.<br />
 The str-duplicated hands get deduplicated, whereas the card-shuffled hands get returned as is!<br />
 
 ---
