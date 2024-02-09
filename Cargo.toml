@@ -3,6 +3,10 @@ name = "RusticPoker"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["conn_logging"]
+conn_logging = []
+
 [dependencies]
 thiserror = "1.0.56"
 rand = "0.8.5"

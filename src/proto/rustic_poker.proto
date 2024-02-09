@@ -1,5 +1,13 @@
-syntax = 'proto3';
+syntax = "proto3";
+import "google/protobuf/empty.proto";
 package rustic_poker;
+
+service RusticPoker {
+  rpc RateHands(RateHandsRequest) returns (RateHandsResponse);
+  rpc Connect(ConnectRequest) returns (google.protobuf.Empty);
+  rpc Disconnect(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc Heartbeat(stream google.protobuf.Empty) returns (google.protobuf.Empty);
+}
 
 message RateHandsRequest {
   repeated string hands = 1; // hand format: "AD KD QD JD 10D"
@@ -9,6 +17,6 @@ message RateHandsResponse {
   repeated string winners = 1;
 }
 
-service RusticPoker {
-  rpc RateHands(RateHandsRequest) returns (RateHandsResponse);
+message ConnectRequest {
+  string player_name = 1;
 }
