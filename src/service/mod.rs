@@ -1,7 +1,7 @@
 mod client;
 mod game;
 
-mod proto {
+pub(crate) mod proto {
     include!("../proto/gen/rustic_poker.rs");
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../proto/gen/rustic_poker_descriptor.bin");
 }
@@ -21,10 +21,14 @@ use proto::{
     RateHandsRequest,
     RateHandsResponse,
     ConnectRequest,
+    GetLobbiesResponse,
+    CreateLobbyRequest,
+    CreateLobbyResponse,
 };
 use crate::types::hand::{Hand, RateHands};
 use client::Client;
 use game::GameService;
+use crate::service::proto::LobbyInfoPrivate;
 
 #[derive(Default)]
 pub struct RusticPokerService {
@@ -61,7 +65,10 @@ impl RusticPokerService {
 macro_rules! extract_client_address {
     ($request:expr) => {
         match $request.remote_addr() {
+            #[cfg(not(feature = "dbg_ignore_client_addr"))]
             Some(addr) => Ok(addr.to_string()),
+            #[cfg(feature = "dbg_ignore_client_addr")]
+            _ => Ok(String::from("0.0.0.0:55101")),
             None => Err(Status::invalid_argument("Unable to retrieve client address")),
         }
     };
@@ -105,5 +112,30 @@ impl RusticPoker for RusticPokerService {
     async fn heartbeat(&self, request: Request<Streaming<()>>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         self.server.lock().unwrap().heartbeat(peer_address)
+    }
+
+    async fn get_lobbies(&self, _: Request<()>) -> Result<Response<GetLobbiesResponse>, Status> {
+        let lobbies = self.server
+            .lock()
+            .unwrap()
+            .lobbies
+            .iter()
+            .map(|lobby| (&*lobby.as_ref().read().unwrap()).into())
+            .collect();
+        Ok(Response::new(GetLobbiesResponse{ lobbies }))
+    }
+
+    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<CreateLobbyResponse>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let CreateLobbyRequest { name } = request.into_inner();
+        let lobby = self.server
+            .lock()
+            .unwrap()
+            .create_lobby(&peer_address, name)?;
+        let lobby = &*lobby.as_ref().read().unwrap();
+        let lobby: LobbyInfoPrivate = lobby.into();
+        // https://github.com/protocolbuffers/protobuf/issues/249
+        let lobby = Some(lobby);
+        Ok(Response::new(CreateLobbyResponse{ lobby }))
     }
 }

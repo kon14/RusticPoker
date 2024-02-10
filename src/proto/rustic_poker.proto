@@ -7,6 +7,8 @@ service RusticPoker {
   rpc Connect(ConnectRequest) returns (google.protobuf.Empty);
   rpc Disconnect(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc Heartbeat(stream google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc GetLobbies(google.protobuf.Empty) returns (GetLobbiesResponse);
+  rpc CreateLobby(CreateLobbyRequest) returns (CreateLobbyResponse);
 }
 
 message RateHandsRequest {
@@ -38,4 +40,16 @@ message LobbyInfoPrivate {
   string name = 2;
   string host_user = 3;
   repeated PlayerInfo players = 4;
+}
+
+message GetLobbiesResponse {
+  repeated LobbyInfoPublic lobbies = 1;
+}
+
+message CreateLobbyRequest {
+  string name = 1;
+}
+
+message CreateLobbyResponse {
+  LobbyInfoPrivate lobby = 1;
 }
