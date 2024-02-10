@@ -20,3 +20,22 @@ message RateHandsResponse {
 message ConnectRequest {
   string player_name = 1;
 }
+
+message PlayerInfo {
+  string name = 1;
+  uint64 credits = 2;
+}
+
+message LobbyInfoPublic {
+  string id = 1;
+  string name = 2;
+  string host_user = 3;
+  uint32 player_count = 4;
+}
+
+message LobbyInfoPrivate {
+  string id = 1;
+  string name = 2;
+  string host_user = 3;
+  repeated PlayerInfo players = 4;
+}
