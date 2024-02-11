@@ -1,7 +1,6 @@
 mod grpc;
 
 use std::sync::{Arc, RwLock};
-use rand::Rng;
 use crate::types::{
     game::Game,
     player::Player,
@@ -10,7 +9,7 @@ use crate::types::{
 
 #[derive(Debug)]
 pub(crate) struct Lobby {
-    pub(super) id: String,
+    pub(crate) id: String,
     pub(super) name: String,
     pub(super) host_user: Arc<User>,
     pub(super) players: Vec<Arc<Player>>,
@@ -18,14 +17,11 @@ pub(crate) struct Lobby {
 }
 
 impl Lobby {
-    pub(crate) fn new(name: String, host_user: Arc<User>) -> Arc<RwLock<Self>> {
-        let mut rng = rand::thread_rng();
-        let random_number: u32 = rng.gen_range(0..=99999999);
-        let lobby_id = format!("{:08}", random_number);
+    pub(crate) fn new(id: String, name: String, host_user: Arc<User>) -> Arc<RwLock<Self>> {
         let lobby = Arc::new(
             RwLock::new(
                 Self {
-                    id: lobby_id,
+                    id,
                     name,
                     host_user,
                     players: vec![],
@@ -49,5 +45,3 @@ impl Lobby {
             .any(|player| &player.user.upgrade().unwrap().name == player_name)
     }
 }
-
-

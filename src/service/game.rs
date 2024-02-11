@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use rand::Rng;
 use tonic::{Response, Status};
 use crate::{
     types::{
@@ -89,11 +90,17 @@ impl GameService {
                 )
             )
         };
-
         if self.user_in_lobby(&user.name) {
             return Err(Status::failed_precondition("User is already participating in another lobby!"))
         }
-        let lobby = Lobby::new(name, user);
+        let id = loop {
+            let random_number: u32 = rand::thread_rng().gen_range(0..=99999999);
+            let id = format!("{:08}", random_number);
+            if self.lobbies.iter().all(|lobby| lobby.read().unwrap().id != id) {
+                break id;
+            }
+        };
+        let lobby = Lobby::new(id, name, user);
         self.lobbies.push(lobby.clone());
         Ok(lobby)
     }
