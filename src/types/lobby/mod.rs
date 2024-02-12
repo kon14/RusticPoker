@@ -1,11 +1,13 @@
 mod grpc;
 
 use std::sync::{Arc, RwLock};
+use tonic::Status;
 use crate::types::{
     game::Game,
     player::Player,
     user::User,
 };
+use crate::service::proto::LobbyStatus;
 
 #[derive(Debug)]
 pub(crate) struct Lobby {
@@ -14,6 +16,7 @@ pub(crate) struct Lobby {
     pub(super) host_user: Arc<User>,
     pub(super) players: Vec<Arc<Player>>,
     pub(super) game: Option<Arc<Game>>,
+    pub(super) status: LobbyStatus,
 }
 
 impl Lobby {
@@ -26,6 +29,7 @@ impl Lobby {
                     host_user,
                     players: vec![],
                     game: None,
+                    status: LobbyStatus::Idle,
                 }
             )
         );
@@ -43,5 +47,15 @@ impl Lobby {
         self.players
             .iter()
             .any(|player| &player.user.upgrade().unwrap().name == player_name)
+    }
+
+    pub(crate) fn add_player(&mut self, player: Arc<Player>) -> Result<(), Status> {
+        let player_name = &player.user.upgrade().unwrap().name;
+        if self.has_player_name(player_name) {
+            Err(Status::already_exists("User is already a member of the lobby!"))
+        } else {
+            self.players.push(player);
+            Ok(())
+        }
     }
 }

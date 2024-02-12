@@ -23,12 +23,12 @@ use proto::{
     ConnectRequest,
     GetLobbiesResponse,
     CreateLobbyRequest,
-    CreateLobbyResponse,
+    JoinLobbyRequest,
+    LobbyInfoPrivate,
 };
 use crate::types::hand::{Hand, RateHands};
 use client::Client;
 use game::GameService;
-use crate::service::proto::LobbyInfoPrivate;
 
 #[derive(Default)]
 pub struct RusticPokerService {
@@ -44,7 +44,7 @@ impl RusticPokerService {
                 let server_r = server.lock().unwrap();
                 let dropped_ips: Vec<String> = server_r
                     .clients
-                    .iter()
+                    .values()
                     .filter(|client| client.last_heartbeat < five_secs_ago)
                     .map(|client| client.address.clone())
                     .collect();
@@ -111,7 +111,7 @@ impl RusticPoker for RusticPokerService {
 
     async fn heartbeat(&self, request: Request<Streaming<()>>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        self.server.lock().unwrap().heartbeat(peer_address)
+        self.server.lock().unwrap().heartbeat(&peer_address)
     }
 
     async fn get_lobbies(&self, _: Request<()>) -> Result<Response<GetLobbiesResponse>, Status> {
@@ -119,23 +119,28 @@ impl RusticPoker for RusticPokerService {
             .lock()
             .unwrap()
             .lobbies
-            .iter()
+            .values()
             .map(|lobby| (&*lobby.as_ref().read().unwrap()).into())
             .collect();
         Ok(Response::new(GetLobbiesResponse{ lobbies }))
     }
 
-    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<CreateLobbyResponse>, Status> {
+    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let CreateLobbyRequest { name } = request.into_inner();
-        let lobby = self.server
-            .lock()
-            .unwrap()
-            .create_lobby(&peer_address, name)?;
-        let lobby = &*lobby.as_ref().read().unwrap();
-        let lobby: LobbyInfoPrivate = lobby.into();
-        // https://github.com/protocolbuffers/protobuf/issues/249
-        let lobby = Some(lobby);
-        Ok(Response::new(CreateLobbyResponse{ lobby }))
+        self.server.lock().unwrap().create_lobby(&peer_address, name)?;
+        Ok(Response::new(()))
+    }
+
+    async fn join_lobby(&self, request: Request<JoinLobbyRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let JoinLobbyRequest { id } = request.into_inner();
+        self.server.lock().unwrap().join_lobby(&peer_address, &id)?;
+        Ok(Response::new(()))
+    }
+
+    async fn get_lobby_state(&self, request: Request<()>) -> Result<Response<LobbyInfoPrivate>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        self.server.lock().unwrap().get_lobby_state(&peer_address)
     }
 }

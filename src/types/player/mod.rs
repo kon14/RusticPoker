@@ -8,6 +8,6 @@ use crate::types::{
 
 #[derive(Debug)]
 pub(crate) struct Player {
-    pub(super) user: Weak<User>,
-    pub(super) lobby: Weak<RwLock<Lobby>>,
+    pub(crate) user: Weak<User>,
+    pub(crate) lobby: Weak<RwLock<Lobby>>,
 }

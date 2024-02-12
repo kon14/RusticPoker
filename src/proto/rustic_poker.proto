@@ -4,11 +4,15 @@ package rustic_poker;
 
 service RusticPoker {
   rpc RateHands(RateHandsRequest) returns (RateHandsResponse);
+  // Server
   rpc Connect(ConnectRequest) returns (google.protobuf.Empty);
   rpc Disconnect(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc Heartbeat(stream google.protobuf.Empty) returns (google.protobuf.Empty);
+  // Lobby
   rpc GetLobbies(google.protobuf.Empty) returns (GetLobbiesResponse);
-  rpc CreateLobby(CreateLobbyRequest) returns (CreateLobbyResponse);
+  rpc CreateLobby(CreateLobbyRequest) returns (google.protobuf.Empty);
+  rpc JoinLobby(JoinLobbyRequest) returns (google.protobuf.Empty);
+  rpc GetLobbyState(google.protobuf.Empty) returns (LobbyInfoPrivate);
 }
 
 message RateHandsRequest {
@@ -28,6 +32,12 @@ message PlayerInfo {
   uint64 credits = 2;
 }
 
+enum LobbyStatus {
+  IDLE = 0;
+  AWAITING_GAME_ACCEPTANCE = 1;
+  IN_GAME = 2;
+}
+
 message LobbyInfoPublic {
   string id = 1;
   string name = 2;
@@ -40,6 +50,7 @@ message LobbyInfoPrivate {
   string name = 2;
   string host_user = 3;
   repeated PlayerInfo players = 4;
+  LobbyStatus status = 5;
 }
 
 message GetLobbiesResponse {
@@ -50,6 +61,14 @@ message CreateLobbyRequest {
   string name = 1;
 }
 
-message CreateLobbyResponse {
+message JoinLobbyRequest {
+  string id = 1;
+}
+
+message EnterLobbyResponse {
   LobbyInfoPrivate lobby = 1;
+}
+
+message RespondStartGameRequest {
+  bool accept = 1;
 }

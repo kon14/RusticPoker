@@ -1,14 +1,18 @@
 use std::{
-    sync::Arc,
+    sync::{Arc, Weak, RwLock},
     time::SystemTime,
 };
-use crate::types::user::User;
+use crate::types::{
+    user::User,
+    lobby::Lobby,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Client {
     pub(super) address: String,
     pub(super) last_heartbeat: SystemTime,
     pub(super) user: Arc<User>,
+    pub(super) lobby: Option<Weak<RwLock<Lobby>>>,
 }
 
 impl Client {
@@ -18,6 +22,7 @@ impl Client {
             address,
             last_heartbeat: SystemTime::now(),
             user,
+            lobby: None,
         }
     }
 

@@ -24,6 +24,7 @@ impl Into<LobbyInfoPrivate> for &Lobby {
             name: self.name.clone(),
             host_user: self.host_user.name.clone(),
             players: self.players.iter().map(|player| player.as_ref().into()).collect(),
+            status: self.status.into(),
         }
     }
 }
