@@ -1,6 +1,11 @@
 mod grpc;
+mod status;
 
-use std::sync::{Arc, RwLock};
+use std::{
+    sync::{Arc, RwLock},
+    collections::HashSet,
+    borrow::Cow,
+};
 use tonic::Status;
 use crate::types::{
     game::Game,
@@ -13,10 +18,11 @@ use crate::service::proto::LobbyStatus;
 pub(crate) struct Lobby {
     pub(crate) id: String,
     pub(super) name: String,
-    pub(super) host_user: Arc<User>,
-    pub(super) players: Vec<Arc<Player>>,
+    pub(crate) host_user: Arc<User>,
+    pub(crate) players: Vec<Arc<Player>>,
     pub(super) game: Option<Arc<Game>>,
     pub(super) status: LobbyStatus,
+    pub(super) matchmaking_acceptance: HashSet<String>, // player name
 }
 
 impl Lobby {
@@ -30,6 +36,7 @@ impl Lobby {
                     players: vec![],
                     game: None,
                     status: LobbyStatus::Idle,
+                    matchmaking_acceptance: HashSet::default(),
                 }
             )
         );
@@ -55,7 +62,71 @@ impl Lobby {
             Err(Status::already_exists("User is already a member of the lobby!"))
         } else {
             self.players.push(player);
+            self.set_status_idle()?;
             Ok(())
         }
+    }
+
+    pub(crate) fn rm_player(&mut self, player_name: &String) -> Result<(), Status> {
+        if !self.has_player_name(player_name) {
+            Err(Status::not_found("User isn't participating in the lobby!"))
+        } else {
+            self.players.retain(|player| &player.user.upgrade().unwrap().name != player_name);
+            self.set_status_idle()?;
+            Ok(())
+        }
+    }
+
+    pub(crate) fn set_status_idle(&mut self) -> Result<(), Status> {
+        if self.status == LobbyStatus::InGame {
+            return Err(
+                Status::failed_precondition(
+                    "Matchmaking state can't be modified during an active game!"
+                )
+            )
+        }
+        self.status = LobbyStatus::Idle;
+        self.matchmaking_acceptance.clear();
+        Ok(())
+    }
+
+    pub(crate) fn get_status(&self) -> &LobbyStatus {
+        &self.status
+    }
+
+    pub(crate) fn set_status_matchmaking(&mut self) -> Result<(), Status> {
+        if self.status == LobbyStatus::InGame {
+            return Err(
+                Status::failed_precondition(
+                    "Matchmaking state can't be modified during an active game!"
+                )
+            )
+        }
+        if self.players.len() == 1 {
+            return Err(
+                Status::failed_precondition(
+                    "Matchmaking can't be initiated. Not enough players!"
+                )
+            )
+        }
+        self.status = LobbyStatus::Matchmaking;
+        self.matchmaking_acceptance.clear();
+        self.matchmaking_acceptance.insert(self.host_user.name.clone());
+        Ok(())
+    }
+
+    pub(crate) fn set_matchmaking_acceptance(&mut self, player_name: Cow<String>, accept: bool) -> Result<(), Status> {
+        if self.status != LobbyStatus::Matchmaking {
+            return Err(Status::failed_precondition("Lobby not currently matchmaking!"));
+        }
+        if !self.has_player_name(&player_name) {
+            return Err(Status::failed_precondition("Player not participating in lobby!"));
+        }
+        if accept {
+            self.matchmaking_acceptance.insert(player_name.into_owned());
+        } else {
+            self.matchmaking_acceptance.remove(&*player_name);
+        }
+        Ok(())
     }
 }

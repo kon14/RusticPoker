@@ -1,7 +1,5 @@
-use crate::{
-    service::proto::PlayerInfo,
-    types::player::Player,
-};
+use crate::service::proto::PlayerInfo;
+use crate::types::player::Player;
 
 impl Into<PlayerInfo> for &Player {
     fn into(self) -> PlayerInfo {

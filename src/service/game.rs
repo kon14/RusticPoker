@@ -1,7 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    borrow::Cow,
+};
 use rand::Rng;
 use tonic::{Response, Status};
+use crate::service::proto::{
+    LobbyInfoPrivate,
+    LobbyStatus,
+    set_lobby_matchmaking_status_request::MatchmakingStatus,
+};
 use crate::{
     types::{
         lobby::Lobby,
@@ -9,7 +17,6 @@ use crate::{
     },
     service::client::Client,
 };
-use crate::service::proto::LobbyInfoPrivate;
 
 #[derive(Default)]
 pub struct GameService {
@@ -51,7 +58,7 @@ impl GameService {
     pub(super) fn heartbeat(&mut self, address: &String) -> Result<Response<()>, Status> {
         let mut client = self.clients.get_mut(address);
         match client {
-            Some(client) => {
+            Some(mut client) => {
                 client.keep_alive();
                 #[cfg(feature = "conn_logging")]
                 println!("<3 @ {}", client.address);
@@ -102,7 +109,7 @@ impl GameService {
             Arc::new(
                 Player {
                     user: Arc::downgrade(&client.user),
-                    lobby: Arc::downgrade(&lobby),
+                    lobby: Arc::downgrade(lobby),
                 }
             )
         )?;
@@ -128,5 +135,62 @@ impl GameService {
         let lobby = lobby.upgrade().unwrap();
         let lobby= &*lobby.read().unwrap();
         Ok(Response::new(lobby.into()))
+    }
+
+    pub(super) fn set_lobby_matchmaking_status(&mut self, client_address: &String, status: MatchmakingStatus) -> Result<Response<()>, Status> {
+        let Some(client) = self.clients.get(client_address) else {
+            return Err(
+                Status::failed_precondition(
+                    "Client not registered! Calling connect() is a prerequisite!"
+                )
+            )
+        };
+        let Some(lobby) = &client.lobby else {
+            return Err(
+                Status::not_found(
+                    "User isn't currently participating in a lobby!"
+                )
+            )
+        };
+        let lobby = lobby.upgrade().unwrap();
+        let mut lobby= lobby.write().unwrap();
+        if lobby.host_user != client.user {
+            return Err(
+                Status::permission_denied(
+                    "User isn't the lobby host!"
+                )
+            )
+        }
+        let status: LobbyStatus = status.into();
+        if lobby.get_status() == &status {
+            return Ok(Response::new(()));
+        }
+        match status {
+            LobbyStatus::Idle => lobby.set_status_idle(),
+            LobbyStatus::Matchmaking => lobby.set_status_matchmaking(),
+            _ => unreachable!(),
+        }?;
+        Ok(Response::new(()))
+    }
+
+    pub(super) fn respond_matchmaking(&self, client_address: &String, accept: bool) -> Result<Response<()>, Status> {
+        let Some(client) = self.clients.get(client_address) else {
+            return Err(
+                Status::failed_precondition(
+                    "Client not registered! Calling connect() is a prerequisite!"
+                )
+            )
+        };
+        let Some(lobby) = &client.lobby else {
+            return Err(
+                Status::not_found(
+                    "User isn't currently participating in a lobby!"
+                )
+            )
+        };
+        let lobby = lobby.upgrade().unwrap();
+        let mut lobby= lobby.write().unwrap();
+        lobby.set_matchmaking_acceptance(Cow::Borrowed(&client.user.name), accept)?;
+        Ok(Response::new(()))
     }
 }

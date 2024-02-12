@@ -13,6 +13,8 @@ service RusticPoker {
   rpc CreateLobby(CreateLobbyRequest) returns (google.protobuf.Empty);
   rpc JoinLobby(JoinLobbyRequest) returns (google.protobuf.Empty);
   rpc GetLobbyState(google.protobuf.Empty) returns (LobbyInfoPrivate);
+  rpc SetLobbyMatchmakingStatus(SetLobbyMatchmakingStatusRequest) returns (google.protobuf.Empty);
+  rpc RespondMatchmaking(RespondStartGameRequest) returns (google.protobuf.Empty);
 }
 
 message RateHandsRequest {
@@ -34,7 +36,7 @@ message PlayerInfo {
 
 enum LobbyStatus {
   IDLE = 0;
-  AWAITING_GAME_ACCEPTANCE = 1;
+  MATCHMAKING = 1;
   IN_GAME = 2;
 }
 
@@ -51,6 +53,7 @@ message LobbyInfoPrivate {
   string host_user = 3;
   repeated PlayerInfo players = 4;
   LobbyStatus status = 5;
+  map<string, bool> matchmaking_acceptance = 6;
 }
 
 message GetLobbiesResponse {
@@ -67,6 +70,14 @@ message JoinLobbyRequest {
 
 message EnterLobbyResponse {
   LobbyInfoPrivate lobby = 1;
+}
+
+message SetLobbyMatchmakingStatusRequest {
+  enum MatchmakingStatus {
+    NOT_MATCHMAKING = 0;
+    MATCHMAKING = 1;
+  }
+  MatchmakingStatus status = 1;
 }
 
 message RespondStartGameRequest {

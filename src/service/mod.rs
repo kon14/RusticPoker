@@ -25,6 +25,9 @@ use proto::{
     CreateLobbyRequest,
     JoinLobbyRequest,
     LobbyInfoPrivate,
+    SetLobbyMatchmakingStatusRequest,
+    set_lobby_matchmaking_status_request::MatchmakingStatus,
+    RespondStartGameRequest,
 };
 use crate::types::hand::{Hand, RateHands};
 use client::Client;
@@ -142,5 +145,20 @@ impl RusticPoker for RusticPokerService {
     async fn get_lobby_state(&self, request: Request<()>) -> Result<Response<LobbyInfoPrivate>, Status> {
         let peer_address = extract_client_address!(request)?;
         self.server.lock().unwrap().get_lobby_state(&peer_address)
+    }
+
+    async fn set_lobby_matchmaking_status(&self, request: Request<SetLobbyMatchmakingStatusRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let SetLobbyMatchmakingStatusRequest { status } = request.into_inner();
+        let Ok(status) = MatchmakingStatus::try_from(status) else {
+            return Err(Status::invalid_argument("Invalid status value"));
+        };
+        self.server.lock().unwrap().set_lobby_matchmaking_status(&peer_address, status)
+    }
+
+    async fn respond_matchmaking(&self, request: Request<RespondStartGameRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let RespondStartGameRequest { accept } = request.into_inner();
+        self.server.lock().unwrap().respond_matchmaking(&peer_address, accept)
     }
 }

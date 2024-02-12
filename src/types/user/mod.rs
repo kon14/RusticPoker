@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub(crate) struct User {
     pub(crate) name: String,
     pub(super) credits: u64,
