@@ -17,14 +17,21 @@ As such, I've opted in favor of contextual clarity over squeezing out CPU and me
 RusticPoker's server provides support for the [gRPC Server Reflection Protocol](https://github.com/grpc/grpc/blob/master/doc/server-reflection.md).<br />
 If your client doesn't support gRPC reflection, you're going to have to provide it with [RusticPoker's `.proto` file](https://github.com/kon14/RusticPoker/blob/main/src/proto/rustic_poker.proto).
 
+---
+
 ## Building 🔨 <a name="building"></a>
 
 ``` bash
-# Standard Build - inactive clients get dropped
+# Standard Build
+# - inactive clients get dropped (use Heartbeat client stream)
+# - connected users identifiable via peer address
 docker build -t rustic-poker .
 
-# Dev Build      - no client dropping
-docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch" .
+# Development Build
+# - ao client dropping
+# - all user requests map to a single connected user
+#   ^ this is relevant for gRPC test clients, as peer address ports typically change per client connection
+docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch,dbg_ignore_client_addr" .
 ```
 
 ## Running 💻 <a name="running"></a>
@@ -33,11 +40,18 @@ docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watc
 docker run --name=rustic-poker -p 55100:55100 rustic-poker
 ```
 
-## Examples 🧪 <a name="examples"></a>
+---
 
-The examples provided utilize [`grpcurl`](https://github.com/fullstorydev/grpcurl) as the gRPC client.<br />
+## Documentation 📚 <a name="documentation"></a>
+
+### [RPC Usage Examples via gRPCurl](examples/gRPCurl)
+
+The examples provided utilize [`gRPCurl`](https://github.com/fullstorydev/grpcurl) as the gRPC client.<br />
 You may alternatively build your own client or choose any API testing tool of your choice.<br />
 The `awesome-grpc` repo maintains a [comprehensive list of useful tooling](https://github.com/grpc-ecosystem/awesome-grpc#tools).
+
+I'd strongly suggest consulting the RPC docs section and checking out the project's [.proto file](proto/rustic_poker.proto).<br />
+In the meantime, here's a brief usage example of a stateless RPC to get your feet wet:
 
 ### RateHands <a name="examples-rate-hands"></a>
 

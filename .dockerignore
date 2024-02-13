@@ -10,3 +10,7 @@
 
 # Git
 .gitignore
+
+# Documentation
+**/*.md
+examples
