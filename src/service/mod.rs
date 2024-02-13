@@ -15,6 +15,7 @@ use std::{
     sync::{Arc, Mutex},
     time::{SystemTime, Duration},
 };
+use rand::Rng;
 use tonic::{Request, Response, Status, Streaming};
 use proto::{
     rustic_poker_server::RusticPoker,
@@ -24,6 +25,7 @@ use proto::{
     GetLobbiesResponse,
     CreateLobbyRequest,
     JoinLobbyRequest,
+    KickLobbyPlayerRequest,
     LobbyInfoPrivate,
     SetLobbyMatchmakingStatusRequest,
     set_lobby_matchmaking_status_request::MatchmakingStatus,
@@ -60,6 +62,31 @@ impl RusticPokerService {
                 });
                 drop(server_w);
                 thread::sleep(Duration::from_secs(3));
+            }
+        })
+    }
+
+    pub fn watch_lobbies_thread(&self) -> thread::JoinHandle<()> {
+        let server = Arc::clone(&self.server);
+        thread::spawn(move || {
+            loop {
+                let mut dropped_lobby_ids: Vec<String> = vec![];
+                let server_r = server.lock().unwrap();
+                let lobbies = server_r
+                    .lobbies
+                    .values()
+                    .map(|lobby| lobby.read().unwrap());
+                for lobby in lobbies {
+                    if lobby.players.is_empty() {
+                        dropped_lobby_ids.push(lobby.id.clone());
+                        continue;
+                    }
+                }
+                drop(server_r);
+                let mut server_w = server.lock().unwrap();
+                server_w.lobbies.retain(|id, _| !dropped_lobby_ids.contains(id));
+                drop(server_w);
+                thread::sleep(Duration::from_millis(500));
             }
         })
     }
@@ -100,8 +127,15 @@ impl RusticPoker for RusticPokerService {
 
     async fn connect(&self, request: Request<ConnectRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        let ConnectRequest { player_name } = request.into_inner();
-        let client = Client::new(peer_address, player_name);
+        let ConnectRequest { user_name } = request.into_inner();
+        let user_id = loop {
+            let random_number: u32 = rand::thread_rng().gen_range(0..=99999999);
+            let id = format!("{:08}", random_number);
+            if !self.server.lock().unwrap().clients.values().any(|client| client.user.id == id) {
+                break id;
+            }
+        };
+        let client = Client::new(peer_address, user_id, user_name);
         self.server.lock().unwrap().add_client(client)?;
         Ok(Response::new(()))
     }
@@ -130,15 +164,28 @@ impl RusticPoker for RusticPokerService {
 
     async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        let CreateLobbyRequest { name } = request.into_inner();
-        self.server.lock().unwrap().create_lobby(&peer_address, name)?;
+        let CreateLobbyRequest { lobby_name } = request.into_inner();
+        self.server.lock().unwrap().create_lobby(&peer_address, lobby_name)?;
         Ok(Response::new(()))
     }
 
     async fn join_lobby(&self, request: Request<JoinLobbyRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        let JoinLobbyRequest { id } = request.into_inner();
-        self.server.lock().unwrap().join_lobby(&peer_address, &id)?;
+        let JoinLobbyRequest { lobby_id } = request.into_inner();
+        self.server.lock().unwrap().join_lobby(&peer_address, &lobby_id)?;
+        Ok(Response::new(()))
+    }
+
+    async fn leave_lobby(&self, request: Request<()>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        self.server.lock().unwrap().leave_lobby(&peer_address)?;
+        Ok(Response::new(()))
+    }
+
+    async fn kick_lobby_player(&self, request: Request<KickLobbyPlayerRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let KickLobbyPlayerRequest { user_id } = request.into_inner();
+        self.server.lock().unwrap().kick_lobby_player(&peer_address, &user_id)?;
         Ok(Response::new(()))
     }
 

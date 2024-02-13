@@ -16,8 +16,8 @@ pub(crate) struct Client {
 }
 
 impl Client {
-    pub fn new(address: String, user_name: String) -> Self {
-        let user = Arc::new(User::new(user_name));
+    pub fn new(address: String, user_id: String, user_name: String) -> Self {
+        let user = Arc::new(User::new(user_id, user_name));
         Self {
             address,
             last_heartbeat: SystemTime::now(),

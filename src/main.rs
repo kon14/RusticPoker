@@ -16,6 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     rustic_poker_service.watch_clients_thread();
+    rustic_poker_service.watch_lobbies_thread();
 
     let server = Server::builder()
         .add_service(RusticPokerServer::new(rustic_poker_service))

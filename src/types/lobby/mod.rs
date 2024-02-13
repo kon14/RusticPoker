@@ -20,7 +20,7 @@ pub(crate) struct Lobby {
     pub(super) name: String,
     pub(crate) host_user: Arc<User>,
     pub(crate) players: Vec<Arc<Player>>,
-    pub(super) game: Option<Arc<Game>>,
+    pub(crate) game: Option<Arc<Game>>,
     pub(super) status: LobbyStatus,
     pub(super) matchmaking_acceptance: HashSet<String>, // player name
 }
@@ -67,13 +67,15 @@ impl Lobby {
         }
     }
 
-    pub(crate) fn rm_player(&mut self, player_name: &String) -> Result<(), Status> {
-        if !self.has_player_name(player_name) {
-            Err(Status::not_found("User isn't participating in the lobby!"))
-        } else {
-            self.players.retain(|player| &player.user.upgrade().unwrap().name != player_name);
-            self.set_status_idle()?;
+    pub(crate) fn rm_player(&mut self, user_id: &String) -> Result<(), Status> {
+        let player_index = self.players
+            .iter()
+            .position(|player| &player.user.upgrade().unwrap().id != user_id);
+        if let Some(player_index) = player_index {
+            self.players.remove(player_index);
             Ok(())
+        } else {
+            Err(Status::not_found("User isn't participating in the lobby!"))
         }
     }
 

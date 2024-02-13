@@ -68,40 +68,40 @@ impl GameService {
         }
     }
 
-    pub(super) fn create_lobby(&mut self, client_address: &String, name: String) -> Result<(), Status> {
+    pub(super) fn create_lobby(&mut self, client_address: &String, lobby_name: String) -> Result<(), Status> {
         let Some(client) = self.clients.get(client_address) else {
             return Err(
                 Status::failed_precondition(
                     "Client not registered! Calling connect() is a prerequisite!"
                 )
-            )
+            );
         };
         if self.user_in_lobby(&client.user.name) {
-            return Err(Status::failed_precondition("User is already participating in another lobby!"))
+            return Err(Status::failed_precondition("User is already participating in another lobby!"));
         }
-        let id = loop {
+        let lobby_id = loop {
             let random_number: u32 = rand::thread_rng().gen_range(0..=99999999);
             let id = format!("{:08}", random_number);
             if !self.lobbies.contains_key(&id) {
                 break id;
             }
         };
-        let lobby = Lobby::new(id.clone(), name, client.user.clone());
-        self.lobbies.insert(id, lobby.clone());
+        let lobby = Lobby::new(lobby_id.clone(), lobby_name, client.user.clone());
+        self.lobbies.insert(lobby_id, lobby.clone());
         let mut client = self.clients.get_mut(client_address).unwrap();
         client.lobby = Some(Arc::downgrade(&lobby));
         Ok(())
     }
 
-    pub(super) fn join_lobby(&mut self, client_address: &String, id: &String) -> Result<(), Status> {
+    pub(super) fn join_lobby(&mut self, client_address: &String, lobby_id: &String) -> Result<(), Status> {
         let Some(mut client) = self.clients.get_mut(client_address) else {
             return Err(
                 Status::failed_precondition(
                     "Client not registered! Calling connect() is a prerequisite!"
                 )
-            )
+            );
         };
-        let mut lobby = self.lobbies.get_mut(id);
+        let mut lobby = self.lobbies.get_mut(lobby_id);
         let Some(lobby) = lobby else {
             return Err(Status::not_found("Lobby doesn't exist!"));
         };
@@ -117,20 +117,82 @@ impl GameService {
         Ok(())
     }
 
-    pub(super) fn get_lobby_state(&self, client_address: &String) -> Result<Response<LobbyInfoPrivate>, Status> {
-        let Some(client) = self.clients.get(client_address) else {
+    pub(super) fn leave_lobby(&mut self, client_address: &String) -> Result<(), Status> {
+        let Some(mut client) = self.clients.get_mut(client_address) else {
             return Err(
                 Status::failed_precondition(
                     "Client not registered! Calling connect() is a prerequisite!"
                 )
-            )
+            );
         };
         let Some(lobby) = &client.lobby else {
             return Err(
                 Status::not_found(
                     "User isn't currently participating in a lobby!"
                 )
-            )
+            );
+        };
+        let lobby = lobby.upgrade().unwrap();
+        lobby.write().unwrap().rm_player(&client.user.id)?;
+        client.lobby = None;
+        Ok(())
+    }
+
+    pub(super) fn kick_lobby_player(&mut self, client_address: &String, user_id: &String) -> Result<(), Status> {
+        let Some(mut client) = self.clients.get_mut(client_address) else {
+            return Err(
+                Status::failed_precondition(
+                    "Client not registered! Calling connect() is a prerequisite!"
+                )
+            );
+        };
+        let Some(lobby) = &client.lobby else {
+            return Err(
+                Status::not_found(
+                    "User isn't currently participating in a lobby!"
+                )
+            );
+        };
+        let lobby = lobby.upgrade().unwrap();
+        let lobby_r = lobby.read().unwrap();
+        if lobby_r.host_user != client.user {
+            return Err(
+                Status::permission_denied(
+                    "User isn't the lobby host!"
+                )
+            );
+        }
+        drop(lobby_r);
+        if &client.user.id == user_id {
+            return Err(
+                Status::permission_denied(
+                    "Can't kick yourself!"
+                )
+            );
+        }
+        let mut lobby_w = lobby.write().unwrap();
+        lobby_w.rm_player(user_id)?;
+        drop(lobby_w);
+        if let Some(mut client) = self.clients.values_mut().find(|client| &client.user.id == user_id) {
+            client.lobby = None;
+        };
+        Ok(())
+    }
+
+    pub(super) fn get_lobby_state(&self, client_address: &String) -> Result<Response<LobbyInfoPrivate>, Status> {
+        let Some(client) = self.clients.get(client_address) else {
+            return Err(
+                Status::failed_precondition(
+                    "Client not registered! Calling connect() is a prerequisite!"
+                )
+            );
+        };
+        let Some(lobby) = &client.lobby else {
+            return Err(
+                Status::not_found(
+                    "User isn't currently participating in a lobby!"
+                )
+            );
         };
         let lobby = lobby.upgrade().unwrap();
         let lobby= &*lobby.read().unwrap();
@@ -143,14 +205,14 @@ impl GameService {
                 Status::failed_precondition(
                     "Client not registered! Calling connect() is a prerequisite!"
                 )
-            )
+            );
         };
         let Some(lobby) = &client.lobby else {
             return Err(
                 Status::not_found(
                     "User isn't currently participating in a lobby!"
                 )
-            )
+            );
         };
         let lobby = lobby.upgrade().unwrap();
         let mut lobby= lobby.write().unwrap();
@@ -159,7 +221,7 @@ impl GameService {
                 Status::permission_denied(
                     "User isn't the lobby host!"
                 )
-            )
+            );
         }
         let status: LobbyStatus = status.into();
         if lobby.get_status() == &status {
@@ -179,14 +241,14 @@ impl GameService {
                 Status::failed_precondition(
                     "Client not registered! Calling connect() is a prerequisite!"
                 )
-            )
+            );
         };
         let Some(lobby) = &client.lobby else {
             return Err(
                 Status::not_found(
                     "User isn't currently participating in a lobby!"
                 )
-            )
+            );
         };
         let lobby = lobby.upgrade().unwrap();
         let mut lobby= lobby.write().unwrap();
