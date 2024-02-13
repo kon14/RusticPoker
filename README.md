@@ -20,7 +20,11 @@ If your client doesn't support gRPC reflection, you're going to have to provide 
 ## Building 🔨 <a name="building"></a>
 
 ``` bash
+# Standard Build - inactive clients get dropped
 docker build -t rustic-poker .
+
+# Dev Build      - no client dropping
+docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch" .
 ```
 
 ## Running 💻 <a name="running"></a>

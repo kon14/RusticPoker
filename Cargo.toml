@@ -7,6 +7,7 @@ edition = "2021"
 default = ["conn_logging"]
 conn_logging = []
 dbg_ignore_client_addr = []
+dbg_disable_client_watch = []
 
 [dependencies]
 thiserror = "1.0.56"

@@ -15,6 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap();
 
+    #[cfg(not(feature = "dbg_disable_client_watch"))]
     rustic_poker_service.watch_clients_thread();
     rustic_poker_service.watch_lobbies_thread();
 
