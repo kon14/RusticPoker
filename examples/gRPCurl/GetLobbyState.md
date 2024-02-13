@@ -37,10 +37,10 @@ _Response:_
   ],
   "status": "MATCHMAKING",
   "matchmakingAcceptance": {
-    "kon14": true,
-    "nick-the-greek": false,
-    "mzlaffx": false,
-    "mzlaffx": true,
+    "58130208": true,
+    "34566823": false,
+    "85671523": false,
+    "91482953": true,
   }
 }
 ```

@@ -56,7 +56,7 @@ message LobbyInfoPrivate {
   string host_user = 3;
   repeated PlayerInfo players = 4;
   LobbyStatus status = 5;
-  map<string, bool> matchmaking_acceptance = 6;
+  map<string, bool> matchmaking_acceptance = 6; // user ID -> accept
 }
 
 message GetLobbiesResponse {

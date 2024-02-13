@@ -23,10 +23,10 @@ impl From<&Lobby> for LobbyInfoPrivate {
         if value.status == LobbyStatus::Matchmaking {
             matchmaking_acceptance = value.players
                 .iter()
-                .map(|player| player.user.upgrade().unwrap().name.clone())
-                .map(|player_name| {
-                    let accept = value.matchmaking_acceptance.contains(&player_name);
-                    (player_name, accept)
+                .map(|player| player.user.upgrade().unwrap().id.clone())
+                .map(|player_id| {
+                    let accept = value.matchmaking_acceptance.contains(&player_id);
+                    (player_id, accept)
                 })
                 .collect();
         }

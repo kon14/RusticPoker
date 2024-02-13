@@ -22,7 +22,7 @@ pub(crate) struct Lobby {
     pub(crate) players: Vec<Arc<Player>>,
     pub(crate) game: Option<Arc<Game>>,
     pub(super) status: LobbyStatus,
-    pub(super) matchmaking_acceptance: HashSet<String>, // player name
+    pub(super) matchmaking_acceptance: HashSet<String>, // user ID
 }
 
 impl Lobby {
@@ -48,6 +48,12 @@ impl Lobby {
         );
         lobby.write().unwrap().players.push(host_player);
         lobby
+    }
+
+    pub(crate) fn has_player_id(&self, player_id: &String) -> bool {
+        self.players
+            .iter()
+            .any(|player| &player.user.upgrade().unwrap().id== player_id)
     }
 
     pub(crate) fn has_player_name(&self, player_name: &String) -> bool {
@@ -113,21 +119,21 @@ impl Lobby {
         }
         self.status = LobbyStatus::Matchmaking;
         self.matchmaking_acceptance.clear();
-        self.matchmaking_acceptance.insert(self.host_user.name.clone());
+        self.matchmaking_acceptance.insert(self.host_user.id.clone());
         Ok(())
     }
 
-    pub(crate) fn set_matchmaking_acceptance(&mut self, player_name: Cow<String>, accept: bool) -> Result<(), Status> {
+    pub(crate) fn set_matchmaking_acceptance(&mut self, user_id: Cow<String>, accept: bool) -> Result<(), Status> {
         if self.status != LobbyStatus::Matchmaking {
             return Err(Status::failed_precondition("Lobby not currently matchmaking!"));
         }
-        if !self.has_player_name(&player_name) {
+        if !self.has_player_id(&user_id) {
             return Err(Status::failed_precondition("Player not participating in lobby!"));
         }
         if accept {
-            self.matchmaking_acceptance.insert(player_name.into_owned());
+            self.matchmaking_acceptance.insert(user_id.into_owned());
         } else {
-            self.matchmaking_acceptance.remove(&*player_name);
+            self.matchmaking_acceptance.remove(&*user_id);
         }
         Ok(())
     }
