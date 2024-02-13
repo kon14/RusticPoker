@@ -2,7 +2,7 @@
 /target
 
 # Proto Code Generation
-/src/proto/gen
+/src/proto
 
 # IDE
 .idea

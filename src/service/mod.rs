@@ -2,8 +2,8 @@ mod client;
 mod game;
 
 pub(crate) mod proto {
-    include!("../proto/gen/rustic_poker.rs");
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../proto/gen/rustic_poker_descriptor.bin");
+    include!("../proto/rustic_poker.rs");
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../proto/rustic_poker_descriptor.bin");
 }
 pub(crate) use proto::{
     rustic_poker_server::RusticPokerServer,

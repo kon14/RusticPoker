@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::Path;
 
-const PROTO_WATCH: &str = "/src/proto";
-const PROTO_PATH: &str = "src/proto/rustic_poker.proto";
-const PROTO_GEN_PATH: &str = "src/proto/gen";
-const FILE_DESCRIPTOR_PATH: &str = "src/proto/gen/rustic_poker_descriptor.bin";
+const PROTO_WATCH: &str = "/proto";
+const PROTO_PATH: &str = "proto/rustic_poker.proto";
+const PROTO_GEN_PATH: &str = "src/proto";
+const FILE_DESCRIPTOR_PATH: &str = "src/proto/rustic_poker_descriptor.bin";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     prepare();
