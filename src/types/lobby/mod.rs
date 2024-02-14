@@ -76,7 +76,7 @@ impl Lobby {
     pub(crate) fn rm_player(&mut self, user_id: &String) -> Result<(), Status> {
         let player_index = self.players
             .iter()
-            .position(|player| &player.user.upgrade().unwrap().id != user_id);
+            .position(|player| &player.user.upgrade().unwrap().id == user_id);
         if let Some(player_index) = player_index {
             self.players.remove(player_index);
             Ok(())
