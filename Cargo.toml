@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = ["conn_logging"]
 conn_logging = []
-dbg_ignore_client_addr = []
+dbg_peer_addr_spoofing = []
 dbg_disable_client_watch = []
 
 [dependencies]

@@ -23,15 +23,10 @@ If your client doesn't support gRPC reflection, you're going to have to provide 
 
 ``` bash
 # Standard Build
-# - inactive clients get dropped (use Heartbeat client stream)
-# - connected users identifiable via peer address
 docker build -t rustic-poker .
 
-# Development Build
-# - ao client dropping
-# - all user requests map to a single connected user
-#   ^ this is relevant for gRPC test clients, as peer address ports typically change per client connection
-docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch,dbg_ignore_client_addr" .
+# Enabling Development Features
+docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch,dbg_peer_addr_spoofing" .
 ```
 
 ## Running 💻 <a name="running"></a>
@@ -43,6 +38,23 @@ docker run --name=rustic-poker -p 55100:55100 rustic-poker
 ---
 
 ## Documentation 📚 <a name="documentation"></a>
+
+If you're interacting with the API through [`gRPCurl`](https://github.com/fullstorydev/grpcurl) or any similar API testing tool, you're most likely going to have to enable the following dev build features:
+
+#### - `dbg_disable_client_watch`
+
+Disables inactive client dropping.<br />
+Normally, any clients that don't maintain a persistent `Heartbeat` client stream get removed.
+
+#### - `dbg_peer_addr_spoofing`
+
+Enables client spoofing via the `peer-address` request metadata header.
+
+Besides allowing for client impersonation, this is extremely relevant for any gRPC test clients.<br />
+That is because the latter don't typically persist server connections and peer address ports usually change on every single connection.<br />
+As such, any test code or manual API interaction incapable of relying on a persistent connection would register as a separate client on every single request!
+
+Example Usage: `grpcurl -H 'peer-address: 0.0.0.0:55200' ...`
 
 ### [RPC Usage Examples via gRPCurl](examples/gRPCurl)
 

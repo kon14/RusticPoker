@@ -2,7 +2,9 @@
 
 ---
 
-These examples utilize [`gRPCurl`](https://github.com/fullstorydev/grpcurl) as the gRPC client.<br />
+These examples utilize [`gRPCurl`](https://github.com/fullstorydev/grpcurl) as the gRPC client.
+
+### Remote Process Calls
 
 - [Connect](Connect.md)
 - [Disconnect](Disconnect.md)

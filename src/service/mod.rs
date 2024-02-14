@@ -94,12 +94,19 @@ impl RusticPokerService {
 
 macro_rules! extract_client_address {
     ($request:expr) => {
-        match $request.remote_addr() {
-            #[cfg(not(feature = "dbg_ignore_client_addr"))]
-            Some(addr) => Ok(addr.to_string()),
-            #[cfg(feature = "dbg_ignore_client_addr")]
-            _ => Ok(String::from("0.0.0.0:55101")),
-            None => Err(Status::invalid_argument("Unable to retrieve client address")),
+        {
+            #[cfg(feature = "dbg_peer_addr_spoofing")]
+            let peer_address = $request.metadata().get("peer-address")
+                .map(|addr| addr.to_str().ok().map(|addr| addr.to_string()))
+                .flatten()
+                .or($request.remote_addr().map(|addr| addr.to_string()))
+                .map(|addr| addr.to_string());
+            #[cfg(not(feature = "dbg_peer_addr_spoofing"))]
+            let peer_address = $request.remote_addr().map(|addr| addr.to_string());
+            match peer_address {
+                Some(addr) => Ok(addr),
+                None => Err(Status::invalid_argument("Unable to retrieve client address!")),
+            }
         }
     };
 }
