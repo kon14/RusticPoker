@@ -7,16 +7,20 @@ edition = "2021"
 default = ["conn_logging"]
 conn_logging = []
 dbg_peer_addr_spoofing = []
-dbg_disable_client_watch = []
 
 [dependencies]
 thiserror = "1.0.56"
-rand = "0.8.5"
-tonic = "0.10.2"
-prost = "0.12.3"
+rand = "0.9.0"
+tonic = "0.12.3"
+prost = "0.13.4"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
-itertools = "0.12.1"
-tonic-reflection = "0.10.2"
+itertools = "0.14.0"
+tonic-reflection = "0.12.3"
+async-stream = "0.3.5"
+uuid = { version = "1.12.1", features = ["v4"] }
+futures = "0.3.31"
+chrono = "0.4.39"
+prost-types = "0.13.4"
 
 [build-dependencies]
-tonic-build = "0.10.2"
+tonic-build = "0.12.3"

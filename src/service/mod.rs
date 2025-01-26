@@ -1,6 +1,3 @@
-mod client;
-mod game;
-
 pub(crate) mod proto {
     include!("../proto/rustic_poker.rs");
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../proto/rustic_poker_descriptor.bin");
@@ -10,13 +7,16 @@ pub(crate) use proto::{
     FILE_DESCRIPTOR_SET,
 };
 
-use std::{
-    thread,
-    sync::{Arc, Mutex},
-    time::{SystemTime, Duration},
-};
+use std::sync::Arc;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::pin::Pin;
+use futures::Stream;
+use tokio::sync::RwLock;
 use rand::Rng;
-use tonic::{Request, Response, Status, Streaming};
+use tonic::{Request, Response, Status};
+use uuid::Uuid;
+use futures::stream::{StreamExt, TryStreamExt};
 use proto::{
     rustic_poker_server::RusticPoker,
     RateHandsRequest,
@@ -25,71 +25,20 @@ use proto::{
     GetLobbiesResponse,
     CreateLobbyRequest,
     JoinLobbyRequest,
-    KickLobbyPlayerRequest,
-    LobbyInfoPrivate,
+    // KickLobbyPlayerRequest,
+    // LobbyInfoPrivate,
     SetLobbyMatchmakingStatusRequest,
     set_lobby_matchmaking_status_request::MatchmakingStatus,
-    RespondStartGameRequest,
+    RespondLobbyMatchmakingRequest,
+    respond_lobby_matchmaking_request::MatchmakingDecision,
 };
 use crate::types::hand::{Hand, RateHands};
-use client::Client;
-use game::GameService;
+use crate::game::GameService;
 
 #[derive(Default)]
 pub struct RusticPokerService {
-    server: Arc<Mutex<GameService>>,
-}
-
-impl RusticPokerService {
-    pub fn watch_clients_thread(&self) -> thread::JoinHandle<()> {
-        let server = Arc::clone(&self.server);
-        thread::spawn(move || {
-            loop {
-                let five_secs_ago = SystemTime::now() - Duration::from_secs(5);
-                let server_r = server.lock().unwrap();
-                let dropped_ips: Vec<String> = server_r
-                    .clients
-                    .values()
-                    .filter(|client| client.last_heartbeat < five_secs_ago)
-                    .map(|client| client.address.clone())
-                    .collect();
-                drop(server_r);
-                let mut server_w = server.lock().unwrap();
-                dropped_ips.iter().for_each(|ip| {
-                    #[cfg(feature = "conn_logging")]
-                    println!("Dropping inactive client @ {}", ip);
-                    server_w.rm_client(ip).unwrap();
-                });
-                drop(server_w);
-                thread::sleep(Duration::from_secs(3));
-            }
-        })
-    }
-
-    pub fn watch_lobbies_thread(&self) -> thread::JoinHandle<()> {
-        let server = Arc::clone(&self.server);
-        thread::spawn(move || {
-            loop {
-                let mut dropped_lobby_ids: Vec<String> = vec![];
-                let server_r = server.lock().unwrap();
-                let lobbies = server_r
-                    .lobbies
-                    .values()
-                    .map(|lobby| lobby.read().unwrap());
-                for lobby in lobbies {
-                    if lobby.players.is_empty() {
-                        dropped_lobby_ids.push(lobby.id.clone());
-                        continue;
-                    }
-                }
-                drop(server_r);
-                let mut server_w = server.lock().unwrap();
-                server_w.lobbies.retain(|id, _| !dropped_lobby_ids.contains(id));
-                drop(server_w);
-                thread::sleep(Duration::from_millis(500));
-            }
-        })
-    }
+    game_service: GameService,
+    player_connections: Arc<RwLock<HashMap<PeerAddress, Uuid>>>,
 }
 
 macro_rules! extract_client_address {
@@ -100,12 +49,26 @@ macro_rules! extract_client_address {
                 .map(|addr| addr.to_str().ok().map(|addr| addr.to_string()))
                 .flatten()
                 .or($request.remote_addr().map(|addr| addr.to_string()))
-                .map(|addr| addr.to_string());
+                .map(|addr| PeerAddress(addr.to_string()));
             #[cfg(not(feature = "dbg_peer_addr_spoofing"))]
-            let peer_address = $request.remote_addr().map(|addr| addr.to_string());
+            let peer_address = $request.
+                remote_addr()
+                .map(|addr| PeerAddress(addr.to_string()));
             match peer_address {
                 Some(addr) => Ok(addr),
                 None => Err(Status::invalid_argument("Unable to retrieve client address!")),
+            }
+        }
+    };
+}
+
+macro_rules! get_player_id {
+    ($self:ident, $peer_address:expr) => {
+        {
+            let player_conns_r = $self.player_connections.read().await;
+            match player_conns_r.get($peer_address) {
+                Some(player_id) => Ok(player_id.clone()),
+                None => Err(Status::failed_precondition("Client not registered. Use Connect() RPC.")),
             }
         }
     };
@@ -132,87 +95,145 @@ impl RusticPoker for RusticPokerService {
         Ok(Response::new(RateHandsResponse { winners }))
     }
 
+    type WatchStateStream = Pin<Box<dyn Stream<Item=Result<proto::GameState, Status>> + Send>>;
+
     async fn connect(&self, request: Request<ConnectRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        let ConnectRequest { user_name } = request.into_inner();
-        let user_id = loop {
-            let random_number: u32 = rand::thread_rng().gen_range(0..=99999999);
-            let id = format!("{:08}", random_number);
-            if !self.server.lock().unwrap().clients.values().any(|client| client.user.id == id) {
-                break id;
-            }
-        };
-        let client = Client::new(peer_address, user_id, user_name);
-        self.server.lock().unwrap().add_client(client)?;
+
+        let mut player_connections_w = self.player_connections.write().await;
+        if player_connections_w.contains_key(&peer_address) {
+            return Ok(Response::new(()));
+        }
+
+        let player_id = self.game_service.connect_rpc().await?;
+        player_connections_w.insert(peer_address, player_id);
         Ok(Response::new(()))
     }
 
     async fn disconnect(&self, request: Request<()>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        self.server.lock().unwrap().rm_client(&peer_address)?;
+
+        let mut player_connections_r = self.player_connections.read().await;
+        let Some(player_id) = player_connections_r.get(&peer_address) else {
+            return Err(Status::aborted("No active client connections!"));
+        };
+
+        self.game_service.disconnect_rpc(player_id).await?;
         Ok(Response::new(()))
     }
 
-    async fn heartbeat(&self, request: Request<Streaming<()>>) -> Result<Response<()>, Status> {
-        let peer_address = extract_client_address!(request)?;
-        self.server.lock().unwrap().heartbeat(&peer_address)
-    }
-
     async fn get_lobbies(&self, _: Request<()>) -> Result<Response<GetLobbiesResponse>, Status> {
-        let lobbies = self.server
-            .lock()
-            .unwrap()
-            .lobbies
-            .values()
-            .map(|lobby| (&*lobby.as_ref().read().unwrap()).into())
+        let lobbies = self.game_service
+            .get_lobbies_rpc()
+            .await
+            .into_iter()
+            .map(|lobby| lobby.into())
             .collect();
         Ok(Response::new(GetLobbiesResponse{ lobbies }))
     }
 
-    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<()>, Status> {
+    // TODO: return LobbyInfoPrivate instead
+    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<(proto::LobbyInfoPublic)>, Status> {
         let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
         let CreateLobbyRequest { lobby_name } = request.into_inner();
-        self.server.lock().unwrap().create_lobby(&peer_address, lobby_name)?;
-        Ok(Response::new(()))
+
+        let lobby = self.game_service.create_lobby_rpc(lobby_name, player_id).await?;
+        Ok(Response::new(lobby.into()))
     }
 
     async fn join_lobby(&self, request: Request<JoinLobbyRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
         let JoinLobbyRequest { lobby_id } = request.into_inner();
-        self.server.lock().unwrap().join_lobby(&peer_address, &lobby_id)?;
+
+        let lobby_id = Uuid::parse_str(&lobby_id)
+            .map_err(|_|
+                Status::invalid_argument("JoinLobbyRequest.lobby_id should be a UUID (v4)!")
+            )?;
+        self.game_service.join_lobby_rpc(lobby_id, player_id).await?;
         Ok(Response::new(()))
     }
 
     async fn leave_lobby(&self, request: Request<()>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        self.server.lock().unwrap().leave_lobby(&peer_address)?;
+        let player_id = get_player_id!(self, &peer_address)?;
+
+        self.game_service.leave_lobby_rpc(player_id).await?;
         Ok(Response::new(()))
     }
 
-    async fn kick_lobby_player(&self, request: Request<KickLobbyPlayerRequest>) -> Result<Response<()>, Status> {
-        let peer_address = extract_client_address!(request)?;
-        let KickLobbyPlayerRequest { user_id } = request.into_inner();
-        self.server.lock().unwrap().kick_lobby_player(&peer_address, &user_id)?;
-        Ok(Response::new(()))
-    }
-
-    async fn get_lobby_state(&self, request: Request<()>) -> Result<Response<LobbyInfoPrivate>, Status> {
-        let peer_address = extract_client_address!(request)?;
-        self.server.lock().unwrap().get_lobby_state(&peer_address)
-    }
+    // async fn kick_lobby_player(&self, request: Request<KickLobbyPlayerRequest>) -> Result<Response<()>, Status> {
+    //     let peer_address = extract_client_address!(request)?;
+    //     let KickLobbyPlayerRequest { user_id } = request.into_inner();
+    //     self.server.lock().unwrap().kick_lobby_player(&peer_address, &user_id)?;
+    //     Ok(Response::new(()))
+    // }
 
     async fn set_lobby_matchmaking_status(&self, request: Request<SetLobbyMatchmakingStatusRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
         let SetLobbyMatchmakingStatusRequest { status } = request.into_inner();
-        let Ok(status) = MatchmakingStatus::try_from(status) else {
-            return Err(Status::invalid_argument("Invalid status value"));
-        };
-        self.server.lock().unwrap().set_lobby_matchmaking_status(&peer_address, status)
+
+        let status = MatchmakingStatus::try_from(status)
+            .map_err(|_| Status::invalid_argument("Invalid MatchmakingStatus value"))?;
+        let matchmaking = status == MatchmakingStatus::Matchmaking;
+        self.game_service.set_lobby_matchmaking_status_rpc(player_id, matchmaking).await?;
+        Ok(Response::new(()))
     }
 
-    async fn respond_matchmaking(&self, request: Request<RespondStartGameRequest>) -> Result<Response<()>, Status> {
+    async fn respond_lobby_matchmaking(&self, request: Request<RespondLobbyMatchmakingRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
-        let RespondStartGameRequest { accept } = request.into_inner();
-        self.server.lock().unwrap().respond_matchmaking(&peer_address, accept)
+        let player_id = get_player_id!(self, &peer_address)?;
+        let RespondLobbyMatchmakingRequest { decision } = request.into_inner();
+
+        let decision = MatchmakingDecision::try_from(decision)
+            .map_err(|_| Status::invalid_argument("Invalid MatchmakingDecision value provided!"))?;
+        let acceptance = decision == MatchmakingDecision::Accept;
+        self.game_service.respond_lobby_matchmaking_rpc(player_id, acceptance).await?;
+        Ok(Response::new(()))
+    }
+
+    async fn start_lobby_game(&self, request: Request<()>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
+
+        self.game_service.start_lobby_game_rpc(player_id).await?;
+        Ok(Response::new(()))
+    }
+
+    async fn watch_state(&self, request: Request<()>) -> Result<Response<Self::WatchStateStream>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
+
+        let stream = self.game_service
+            .watch_state_rpc(player_id)
+            .await?
+            .map_ok(|game_state| proto::GameState::from(game_state))
+            .map_err(|err| err.into());
+        Ok(Response::new(Box::pin(stream) as Self::WatchStateStream))
+    }
+}
+
+#[derive(Eq, PartialEq, Hash)]
+pub struct PeerAddress(String);
+
+impl Deref for PeerAddress {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<str> for PeerAddress {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for PeerAddress {
+    fn from(s: String) -> Self {
+        PeerAddress(s)
     }
 }

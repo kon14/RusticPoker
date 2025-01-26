@@ -1,3 +1,8 @@
+mod common;
+mod game;
+mod lobby;
+mod r#match;
+mod player;
 mod service;
 mod types;
 
@@ -12,12 +17,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rustic_poker_service = RusticPokerService::default();
     let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-        .build()
+        .build_v1()
         .unwrap();
-
-    #[cfg(not(feature = "dbg_disable_client_watch"))]
-    rustic_poker_service.watch_clients_thread();
-    rustic_poker_service.watch_lobbies_thread();
 
     let server = Server::builder()
         .add_service(RusticPokerServer::new(rustic_poker_service))

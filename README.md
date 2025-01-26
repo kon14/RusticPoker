@@ -26,7 +26,7 @@ If your client doesn't support gRPC reflection, you're going to have to provide 
 docker build -t rustic-poker .
 
 # Enabling Development Features
-docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_disable_client_watch,dbg_peer_addr_spoofing" .
+docker build -t rustic-poker --build-arg BUILD_FEATURES="dbg_peer_addr_spoofing" .
 ```
 
 ## Running 💻 <a name="running"></a>
@@ -40,11 +40,6 @@ docker run --name=rustic-poker -p 55100:55100 rustic-poker
 ## Documentation 📚 <a name="documentation"></a>
 
 If you're interacting with the API through [`gRPCurl`](https://github.com/fullstorydev/grpcurl) or any similar API testing tool, you're most likely going to have to enable the following dev build features:
-
-#### - `dbg_disable_client_watch`
-
-Disables inactive client dropping.<br />
-Normally, any clients that don't maintain a persistent `Heartbeat` client stream get removed.
 
 #### - `dbg_peer_addr_spoofing`
 
