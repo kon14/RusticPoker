@@ -1,5 +1,7 @@
+mod phase;
+pub(crate) mod table;
 mod service;
-mod state;
 
+pub use phase::GamePhase;
+pub use table::GameTable;
 pub use service::GameService;
-pub use state::GameState;

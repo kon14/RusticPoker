@@ -3,8 +3,14 @@ mod game;
 mod lobby;
 mod r#match;
 mod player;
-mod service;
 mod types;
+
+/// This module contains RusticPoker's top-level gRPC service implementation.
+mod service;
+
+/// This module contains entities exclusively utilized for game state representation.<br />
+/// These data types contain processed output state data, not internal state data.
+pub mod output;
 
 use std::env;
 use tonic::transport::Server;

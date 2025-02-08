@@ -19,8 +19,6 @@ use uuid::Uuid;
 use futures::stream::{StreamExt, TryStreamExt};
 use proto::{
     rustic_poker_server::RusticPoker,
-    RateHandsRequest,
-    RateHandsResponse,
     ConnectRequest,
     GetLobbiesResponse,
     CreateLobbyRequest,
@@ -31,6 +29,9 @@ use proto::{
     set_lobby_matchmaking_status_request::MatchmakingStatus,
     RespondLobbyMatchmakingRequest,
     respond_lobby_matchmaking_request::MatchmakingDecision,
+    RespondBettingPhaseRequest,
+    respond_betting_phase_request::BettingPhaseDecision,
+    RespondDrawingPhaseRequest,
 };
 use crate::types::hand::{Hand, RateHands};
 use crate::game::GameService;
@@ -76,24 +77,24 @@ macro_rules! get_player_id {
 
 #[tonic::async_trait]
 impl RusticPoker for RusticPokerService {
-    async fn rate_hands(&self, request: Request<RateHandsRequest>) -> Result<Response<RateHandsResponse>, Status> {
-        let RateHandsRequest { hands } = request.into_inner();
-        if hands.is_empty() {
-            return Err(Status::new(tonic::Code::InvalidArgument, "No poker hands provided!"));
-        }
-        let hands: Result<Vec<Hand>, _> = hands
-            .into_iter()
-            .map(|h| h.as_str().try_into())
-            .collect();
-        let Ok(hands) = hands else {
-            return Err(Status::new(tonic::Code::InvalidArgument, "Invalid poker hands!"));
-        };
-        let winners = hands.determine_winners()
-            .into_iter()
-            .map(|h| h.raw_hand_str)
-            .collect();
-        Ok(Response::new(RateHandsResponse { winners }))
-    }
+    // async fn rate_hands(&self, request: Request<RateHandsRequest>) -> Result<Response<RateHandsResponse>, Status> {
+    //     let RateHandsRequest { hands } = request.into_inner();
+    //     if hands.is_empty() {
+    //         return Err(Status::new(tonic::Code::InvalidArgument, "No poker hands provided!"));
+    //     }
+    //     let hands: Result<Vec<Hand>, _> = hands
+    //         .into_iter()
+    //         .map(|h| h.as_str().try_into())
+    //         .collect();
+    //     let Ok(hands) = hands else {
+    //         return Err(Status::new(tonic::Code::InvalidArgument, "Invalid poker hands!"));
+    //     };
+    //     let winners = hands.determine_winners()
+    //         .into_iter()
+    //         .map(|h| h.raw_hand_str)
+    //         .collect();
+    //     Ok(Response::new(RateHandsResponse { winners }))
+    // }
 
     type WatchStateStream = Pin<Box<dyn Stream<Item=Result<proto::GameState, Status>> + Send>>;
 
@@ -200,6 +201,28 @@ impl RusticPoker for RusticPokerService {
 
         self.game_service.start_lobby_game_rpc(player_id).await?;
         Ok(Response::new(()))
+    }
+
+    async fn respond_betting_phase(&self, request: Request<RespondBettingPhaseRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
+        let RespondBettingPhaseRequest { decision, raise_amount } = request.into_inner();
+
+        todo!()
+        // let decision = DrawingDecision::try_from(decision)
+        //     .map_err(|_| Status::invalid_argument("Invalid DrawingDecision value provided!"))?;
+        // self.game_service.respond_betting_phase_rpc(player_id, decision).await?;
+        // Ok(Response::new(()))
+    }
+
+    async fn respond_drawing_phase(&self, request: Request<RespondDrawingPhaseRequest>) -> Result<Response<()>, Status> {
+        let peer_address = extract_client_address!(request)?;
+        let player_id = get_player_id!(self, &peer_address)?;
+        let RespondDrawingPhaseRequest { discarded_cards } = request.into_inner();
+
+        todo!()
+        // self.game_service.respond_drawing_phase_rpc(player_id, discarded_cards).await?;
+        // Ok(Response::new(()))
     }
 
     async fn watch_state(&self, request: Request<()>) -> Result<Response<Self::WatchStateStream>, Status> {

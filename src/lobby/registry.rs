@@ -1,30 +1,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
 use super::Lobby;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Default)]
 pub struct LobbyRegistry {
     registry: Arc<RwLock<HashMap<Uuid, Arc<RwLock<Lobby>>>>>,
-    broadcaster: broadcast::Sender<Option<Lobby>>,
 }
 
 impl LobbyRegistry {
-    pub fn new(broadcaster_capacity: usize) -> Self {
-        let (broadcaster, _) = broadcast::channel(broadcaster_capacity);
-        Self {
-            registry: Arc::new(RwLock::new(HashMap::new())),
-            broadcaster,
-        }
-    }
-
-    pub async fn add_lobby(&mut self, lobby: Lobby) -> Result<(), AppError> {
+    pub async fn add_lobby(&mut self, lobby_id: Uuid, lobby: Arc<RwLock<Lobby>>) -> Result<(), AppError> {
         let mut registry_w = self.registry.write().await;
-        registry_w.insert(lobby.lobby_id, Arc::new(RwLock::new(lobby.clone())));
-        let _ = self.broadcaster.send(Some(lobby)); // TODO: handle publish errors
+        registry_w.insert(lobby_id, lobby);
         Ok(())
     }
 
@@ -32,7 +22,6 @@ impl LobbyRegistry {
         let Some(_) = self.registry.write().await.remove(lobby_id) else {
             return Err(AppError::not_found(lobby_id.clone()));
         };
-        let _ = self.broadcaster.send(None); // TODO: handle publish errors
         return Ok(());
     }
 
@@ -70,15 +59,5 @@ impl LobbyRegistry {
             lobbies.push(lobby);
         }
         lobbies
-    }
-
-    pub fn subscribe(&self) -> broadcast::Receiver<Option<Lobby>> {
-        self.broadcaster.subscribe()
-    }
-}
-
-impl Default for LobbyRegistry {
-    fn default() -> Self {
-        Self::new(10)
     }
 }

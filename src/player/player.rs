@@ -1,8 +1,10 @@
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
+#[derive(Eq, PartialEq, Hash)] // object-level equality
 pub struct Player {
     pub player_id: Uuid,
+    // pub name: String,
     pub total_credits: u64,
     // events => calculate after table actions
     // pub available_credits: u64,

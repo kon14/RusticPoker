@@ -1,9 +1,11 @@
+mod proto;
 mod rank;
 mod tie_breakers;
 
 pub(crate) use rank::*;
 
 use std::cmp::Ordering;
+use std::fmt::Display;
 use thiserror::Error;
 use itertools::Itertools;
 use crate::types::{
@@ -29,6 +31,7 @@ pub(crate) enum HandParseError {
 
 impl TryFrom<&str> for Hand {
     type Error = HandParseError;
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let card_strs: Vec<&str> = value.split_whitespace().collect();
         if card_strs.len() != 5 {
@@ -42,10 +45,19 @@ impl TryFrom<&str> for Hand {
             Ok(array) => array,
             Err(_) => unreachable!(),
         };
+        cards.try_into()
+    }
+}
+
+impl TryFrom<[Card; 5]> for Hand {
+    type Error = HandParseError;
+
+    fn try_from(cards: [Card; 5]) -> Result<Self, Self::Error> {
         let rank: HandRank = cards.clone().try_into()?;
         let tie_breakers = get_tie_breakers(&rank, &cards);
+
         return Ok(Self {
-            raw_hand_str: value.into(),
+            raw_hand_str: Self::cards_to_string(&cards),
             cards,
             rank,
             tie_breakers,
@@ -140,6 +152,13 @@ impl TryFrom<&str> for Hand {
     }
 }
 
+impl Hand {
+    fn cards_to_string(cards: &[Card; 5]) -> String {
+        let cards: Vec<_> = cards.iter().map(|card| card.to_string()).collect();
+        format!("{}", cards.join(" "))
+    }
+}
+
 impl PartialEq for Hand {
     // "AS KS QS JS 10S" == "AH KH QH JH 10H"
     fn eq(&self, other: &Self) -> bool {
@@ -220,7 +239,7 @@ mod tests {
             high_card.clone(),
         ];
         let mut hands_rand = hands_sorted.clone();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         hands_rand.shuffle(&mut rng);
         hands_rand.sort_by(|a, b| b.cmp(a));
         assert_eq!(hands_sorted, hands_rand);

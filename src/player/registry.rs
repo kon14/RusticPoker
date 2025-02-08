@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
@@ -8,25 +8,17 @@ use super::Player;
 
 // TODO: Track Player/Lobby mapping in PlayerRegistry (outside Player struct)
 
-#[derive(Clone)]
+// TODO: keep player credits up-to-date with events
+
+#[derive(Clone, Debug, Default)]
 pub struct PlayerRegistry {
     registry: Arc<RwLock<HashMap<Uuid, Arc<RwLock<Player>>>>>,
-    // broadcaster: broadcast::Sender<Option<Player>>,
 }
 
 impl PlayerRegistry {
-    pub fn new(broadcaster_capacity: usize) -> Self {
-        // let (broadcaster, _) = broadcast::channel(broadcaster_capacity);
-        Self {
-            registry: Arc::new(RwLock::new(HashMap::new())),
-            // broadcaster,
-        }
-    }
-
     pub async fn add_player(&mut self, player: Player) -> Result<(), AppError> {
         let mut registry_w = self.registry.write().await;
         registry_w.insert(player.player_id, Arc::new(RwLock::new(player.clone())));
-        // let _ = self.broadcaster.send(Some(player)); // TODO: handle publish errors
         Ok(())
     }
 
@@ -73,15 +65,5 @@ impl PlayerRegistry {
         } else {
             Ok(players)
         }
-    }
-
-    // pub fn subscribe(&self) -> broadcast::Receiver<Option<Player>> {
-    //     self.broadcaster.subscribe()
-    // }
-}
-
-impl Default for PlayerRegistry {
-    fn default() -> Self {
-        Self::new(10)
     }
 }

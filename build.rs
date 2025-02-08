@@ -26,6 +26,6 @@ fn build_protos() {
         .build_client(false)
         .out_dir(PROTO_GEN_PATH)
         .file_descriptor_set_path(FILE_DESCRIPTOR_PATH)
-        .compile(&[PROTO_PATH], &[PROTO_WATCH])
+        .compile_protos(&[PROTO_PATH], &[PROTO_WATCH])
         .unwrap();
 }

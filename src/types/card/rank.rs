@@ -1,4 +1,6 @@
 use std::cmp::Ordering;
+use std::fmt::{Display, Formatter};
+
 use crate::types::card::CardParseError;
 
 #[derive(Eq, PartialEq, Clone, Debug, Hash)]
@@ -174,5 +176,25 @@ impl GroupByRank for Vec<CardRank> {
             result.push(current_group);
         }
         result
+    }
+}
+
+impl Display for CardRank {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CardRank::Ace => write!(f, "A"),
+            CardRank::Two => write!(f, "2"),
+            CardRank::Three => write!(f, "3"),
+            CardRank::Four => write!(f, "4"),
+            CardRank::Five => write!(f, "5"),
+            CardRank::Six => write!(f, "6"),
+            CardRank::Seven => write!(f, "7"),
+            CardRank::Eight => write!(f, "8"),
+            CardRank::Nine => write!(f, "9"),
+            CardRank::Ten => write!(f, "10"),
+            CardRank::Jack => write!(f, "J"),
+            CardRank::Queen => write!(f, "Q"),
+            CardRank::King => write!(f, "K"),
+        }
     }
 }

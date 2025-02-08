@@ -27,8 +27,9 @@ service RusticPoker {
   rpc StartLobbyGame(google.protobuf.Empty) returns (google.protobuf.Empty);
 //  rpc SetLobbySettings(LobbySettings) returns (google.protobuf.Empty);
 
-  // [Debug]
-  rpc RateHands(RateHandsRequest) returns (RateHandsResponse);
+  // [Game]
+  rpc RespondBettingPhase(RespondBettingPhaseRequest) returns (google.protobuf.Empty);
+  rpc RespondDrawingPhase(RespondDrawingPhaseRequest) returns (google.protobuf.Empty);
 }
 
 
@@ -39,7 +40,7 @@ message ConnectRequest {
 }
 
 message LobbyInfoPublic {
-  string id = 1;
+  string lobby_id = 1;
   string name = 2;
   string host_player_id = 3;
   uint32 player_count = 4;
@@ -49,14 +50,13 @@ message LobbyInfoPublic {
 message GameState {
   PlayerState player_state = 1;
   LobbyState lobby_state = 2;
-  //  GameState game_state = 3;
   optional MatchState match_state = 3;
   google.protobuf.Timestamp timestamp = 4;
 }
 
 message PlayerState {
   string player_id = 1;
-  uint64 total_credits = 2;
+  string name = 2;
 }
 
 message LobbyState {
@@ -79,7 +79,7 @@ message LobbySettings {
   GameMode game_mode = 1;
   uint32 min_players = 2;
   uint32 max_players = 3;
-  //  uint64 ante_amount = 4;
+  uint64 ante_amount = 4;
   //  uint64 min_bet_amount = 5;
   //  uint64 max_bet_amount = 6;
   //  uint64 time_per_hand = 7;
@@ -92,10 +92,10 @@ message LobbySettings {
 
 message MatchState {
   string match_id = 1;
-  //  repeated MatchStatePlayerInfo player_info = 2;
-  //  repeated MatchStatePot pots = 3;
+  map<string, MatchStatePlayerPublicInfo> player_info = 2;
+  map<string, MatchStateCreditPot> credit_pots = 3;
   //  MatchStatePlayerInfo own_info = 4;
-  //  MatchStatePlayerHand own_hand = 5;
+  optional Hand own_hand = 4;
   ////  MatchStateRoundState round_state = 6;
 //  repeated string player_ids = 2;
 }
@@ -122,7 +122,7 @@ message JoinLobbyRequest {
 }
 
 //message KickLobbyPlayerRequest {
-//  string user_id = 1;
+//  string player_id = 1;
 //}
 
 //message ShowdownPotWinner {
@@ -141,43 +141,58 @@ message JoinLobbyRequest {
 //  map<uint32, ShowdownRankPlayers> user_ranks = 1;
 //  repeated ShowdownPotWinner pot_winners = 2;
 //}
-//enum CardSuit {
-//  Diamonds = 0;
-//  Hearts = 1;
-//  Clubs = 2;
-//  Spades = 3;
-//}
-//
-//enum CardRank {
-//  Ace = 0;
-//  Two = 1;
-//  Three = 2;
-//  // ...
-//}
 
-//message HandCard {
+message Card {
+  CardRank rank = 1;
+  CardSuit suit = 2;
+
+  enum CardSuit {
+    Diamonds = 0;
+    Hearts = 1;
+    Clubs = 2;
+    Spades = 3;
+  }
+
+  enum CardRank {
+    Ace = 0;
+    Two = 1;
+    Three = 2;
+    Four = 3;
+    Five = 4;
+    Six = 5;
+    Seven = 6;
+    Eight = 7;
+    Nine = 8;
+    Ten = 9;
+    Jack = 10;
+    Queen = 11;
+    King = 12;
+  }
+
+//  // RANK:  A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K
+//  // SUITE: D, H, C, S
+//  // String Format: {RANK}{SUITE}
 //  string card = 1;
-//  bool discarded = 2;
-//}
-//
-//message MatchStatePlayerHand {
-//  repeated HandCard cards = 1;
-//}
-//
-//message MatchStatePlayerInfo {
-//  string user_id = 1;
+}
+
+message Hand {
+  repeated Card cards = 1;
+}
+
+message MatchStatePlayerPublicInfo {
+  string player_id = 1;
 //  string name = 2;
-//  uint64 starting_credits = 3;
-//  uint64 remaining_credits = 4;
-//  map<string, uint64> pot_credits = 5;
-//}
-//
-//message MatchStatePot {
-//  string pot_id = 1;
-//  uint64 is_main_pot = 2;
-//  uint64 total_credits = 3;
-//  map<string, uint64> user_credits = 4;
-//}
+  uint64 starting_credits = 2;
+  uint64 remaining_credits = 3;
+  map<string, uint64> pot_credits = 4;
+}
+
+message MatchStateCreditPot {
+  string pot_id = 1;
+  bool is_main_pot = 2;
+  uint64 total_credits = 3;
+  map<string, uint64> player_credits = 4;
+}
 
 //enum MatchStateRoundPhase {
 //
@@ -214,13 +229,17 @@ message RespondLobbyMatchmakingRequest {
 //  uint64 credits = 3;
 //}
 
+message RespondBettingPhaseRequest {
+  BettingPhaseDecision decision = 1;
+  optional uint64 raise_amount = 2;
 
-// [Debug]
-
-message RateHandsRequest {
-  repeated string hands = 1; // hand format: "AD KD QD JD 10D"
+  enum BettingPhaseDecision {
+    Call = 0;
+    Raise = 1;
+    Fold = 2;
+  }
 }
 
-message RateHandsResponse {
-  repeated string winners = 1;
+message RespondDrawingPhaseRequest {
+  repeated Card discarded_cards = 1;
 }
