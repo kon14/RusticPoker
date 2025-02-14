@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use tokio::sync::broadcast;
 use uuid::Uuid;
+
 use crate::common::error::AppError;
 use crate::game::GameTable;
 use crate::game::phase::BettingRoundAction;
@@ -40,6 +41,8 @@ impl PokerPhaseBehavior for PokerPhaseAnte {
 
         let credit_pot = self.game_table.credit_pots.values_mut().next().unwrap(); // first pot should exist
         credits.use_credits(self.ante_amount, credit_pot).unwrap();
+
+        let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
     fn is_phase_completed(&self) -> bool {
@@ -89,6 +92,8 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
             .unwrap(); // fresh deck can't underflow for max players
         let hand: Hand = cards.try_into().unwrap(); // no dupes
         self.player_hands.insert(player_id, hand);
+
+        let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
     fn is_phase_completed(&self) -> bool {
@@ -224,7 +229,9 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
             unreachable!()
         };
 
-        todo!()
+        todo!();
+
+        let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
     fn is_phase_completed(&self) -> bool {
@@ -277,10 +284,10 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
     }
 }
 
-// fn shift_queue(queue: &mut VecDeque<Uuid>) -> Result<Uuid, AppError> {
-//     let active_player = queue
-//         .pop_front()
-//         .ok_or(Err(AppError::internal("Can't shift an empty queue!")))?;
-//     queue.push_back(active_player);
-//     Ok(active_player)
-// }
+pub fn shift_queue(queue: &mut VecDeque<Uuid>) -> Result<Uuid, AppError> {
+    let active_player = queue
+        .pop_front()
+        .ok_or(AppError::internal("Can't shift an empty queue!"))?;
+    queue.push_back(active_player);
+    Ok(active_player)
+}

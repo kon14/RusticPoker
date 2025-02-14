@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::service::proto::respond_betting_phase_request as proto;
 use crate::common::error::AppError;
 use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
+use crate::game::phase::poker::r#impl::shift_queue;
 use super::PokerPhaseBetting;
 
 #[derive(Clone, Debug)]
@@ -25,7 +26,9 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
     /// Phase actions are primarily initiated by players.<br />
     /// Players not responding in time fold their hands.
     fn act(&mut self) {
-        todo!()
+        todo!();
+
+        let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
     /// Checks whether everyone has either folded or matched the highest bet.
