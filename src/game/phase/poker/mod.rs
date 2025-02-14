@@ -26,6 +26,8 @@ pub(super) trait PokerPhaseBehavior {
     fn is_phase_completed(&self) -> bool;
 
     fn next_phase(self) -> Option<PokerPhase>;
+
+    fn get_active_player_id(&self) -> Option<Uuid>;
 }
 
 impl PokerPhaseBehavior for PokerPhase {
@@ -61,13 +63,23 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Showdown(phase) => phase.next_phase(),
         }
     }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        match self {
+            PokerPhase::Ante(phase) => phase.get_active_player_id(),
+            PokerPhase::Dealing(phase) => phase.get_active_player_id(),
+            PokerPhase::FirstBetting(phase) => phase.get_active_player_id(),
+            PokerPhase::Drawing(phase) => phase.get_active_player_id(),
+            PokerPhase::SecondBetting(phase) => phase.get_active_player_id(),
+            PokerPhase::Showdown(phase) => phase.get_active_player_id(),
+        }
+    }
 }
 
 impl PokerPhase {
     pub(super) fn new(game_table: GameTable, card_deck: CardDeck, ante_amount: u64) -> Self {
         PokerPhase::Ante(PokerPhaseAnte::new(game_table, card_deck, ante_amount))
     }
-
 
     pub(super) fn get_post_act_delay(&self) -> Option<Duration> {
         match self {

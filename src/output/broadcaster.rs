@@ -53,24 +53,30 @@ impl GameStateBroadcaster {
         }
     }
 
-    pub async fn _publish(&self, lobby: Option<&Lobby>) -> Result<(), AppError> {
+    async fn _publish(&self, lobby: Option<&Lobby>) -> Result<(), AppError> {
         let state = self.build_state(lobby).await?;
-        self.broadcaster
-            .send(Some(state))
-            .map(|_| ())
-            .map_err(|err| AppError::internal("GameStateBroadcaster.publish() call failed!"))
+        let _ = self.broadcaster
+            .send(Some(state));
+            // Ignore errors caused by no active receivers...
+            // .map(|_| ())
+            // .map_err(|err| {
+            //     eprintln!("{}", err);
+            //     AppError::internal("GameStateBroadcaster.publish() call failed!")
+            // });
+        Ok(())
     }
 
-    pub fn disconnect(&self) -> Result<(), AppError> {
-        self.broadcaster
-            .send(None)
-            .map(|_| ())
-            .map_err(|err| AppError::internal("GameStateBroadcaster.disconnect() call failed!"))
-    }
-}
+    // pub fn disconnect(&self) -> Result<(), AppError> {
+    //     self.broadcaster
+    //         .send(None)
+    //         .map(|_| ())
+    //         .map_err(|err| {
+    //             eprintln!("{}", err);
+    //             AppError::internal("GameStateBroadcaster.disconnect() call failed!")
+    //         })
+    // }
 
-impl GameStateBroadcaster {
-    async fn build_state(&self, lobby: Option<&Lobby>) -> Result<GameState, AppError> {
+    pub async fn build_state(&self, lobby: Option<&Lobby>) -> Result<GameState, AppError> {
         let Some(lobby_arc) = &self.lobby_arc else {
             unreachable!("Partial GameStatePublisher initialization!");
         };
@@ -92,7 +98,9 @@ impl GameStateBroadcaster {
         );
         Ok(game_state)
     }
+}
 
+impl GameStateBroadcaster {
     async fn build_player_states(&self, lobby: &Lobby) -> Result<HashMap<Uuid, PlayerState>, AppError> {
         let player_ids = lobby.player_ids.clone();
         let player_registry_r = self.player_registry.read().await;

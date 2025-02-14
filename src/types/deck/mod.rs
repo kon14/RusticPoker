@@ -10,9 +10,17 @@ impl Default for CardDeck {
         let mut deck = Vec::with_capacity(52);
         let suits = [CardSuit::Diamonds, CardSuit::Hearts, CardSuit::Clubs, CardSuit::Spades];
         for suit in suits {
-            while let Some(rank) = CardRank::Ace.into_iter().next() {
-                deck.push(Card { rank, suit: suit.clone() });
-            }
+            deck.push(Card { rank: CardRank::Two, suit: suit.clone() });
+            deck.extend(
+                CardRank::Two
+                    .into_iter()
+                    .map(|rank| Card { rank, suit: suit.clone() })
+            );
+            // let mut rank_iter = CardRank::Two.into_iter();
+            // deck.push(Card { rank, suit: suit.clone() });
+            // while let Some(rank) = rank_iter.next() {
+            //     deck.push(Card { rank, suit: suit.clone() });
+            // }
         }
         let mut deck = CardDeck(deck);
         deck.shuffle();

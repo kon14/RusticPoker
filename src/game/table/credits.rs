@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 use crate::common::error::AppError;
@@ -36,6 +36,10 @@ impl CreditPot {
         *player_entry += amount;
         self.total_credits += amount;
         player_credits.pot_credits.insert(self.pot_id, amount);
+    }
+
+    pub fn get_participants(&self) -> HashSet<Uuid> {
+        self.player_credits.keys().cloned().collect()
     }
 }
 

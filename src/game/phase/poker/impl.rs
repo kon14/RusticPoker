@@ -1,5 +1,6 @@
-use std::collections::HashMap;
-
+use std::collections::{HashMap, VecDeque};
+use uuid::Uuid;
+use crate::common::error::AppError;
 use crate::game::GameTable;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
@@ -19,25 +20,32 @@ impl PokerPhaseAnte {
 }
 
 impl PokerPhaseBehavior for PokerPhaseAnte {
+    /// Handles the placement of forced initial bets.<br />
+    /// Phase actions are automatically scheduled without any player interaction.
     fn act(&mut self) {
-        let Some(player_id) = self.phase_player_queue.pop_back() else {
+        let Some(player_id) = self.phase_player_queue.front().cloned() else {
             unreachable!()
         };
-
         let Some(mut credits) = self.game_table.player_credits.get_mut(&player_id) else {
             unreachable!()
         };
+
         let credit_pot = self.game_table.credit_pots.values_mut().next().unwrap(); // first pot should exist
         credits.use_credits(self.ante_amount, credit_pot).unwrap();
-        // TODO: short delay
     }
 
     fn is_phase_completed(&self) -> bool {
-        self.game_table.player_credits.len() == self.game_table.player_ids.len()
+        let main_pot = self.game_table.credit_pots.values().next().unwrap();
+        let main_pot_participants = main_pot.get_participants();
+        main_pot_participants.len() == self.game_table.player_ids.len()
     }
 
     fn next_phase(self) -> Option<PokerPhase> {
         Some(PokerPhase::Dealing(PokerPhaseDealing::from_ante(self)))
+    }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        self.phase_player_queue.front().cloned()
     }
 }
 
@@ -49,6 +57,7 @@ impl PokerPhaseDealing {
             game_table: ante_phase.game_table,
             card_deck: ante_phase.card_deck,
             phase_player_queue,
+            _ante_amount: ante_phase.ante_amount,
             player_hands: HashMap::with_capacity(player_count),
             // player_cards: HashMap::with_capacity(player_count),
         }
@@ -56,8 +65,10 @@ impl PokerPhaseDealing {
 }
 
 impl PokerPhaseBehavior for PokerPhaseDealing {
+    /// Handles card dealing.<br />
+    /// Phase actions are automatically scheduled without any player interaction.
     fn act(&mut self) {
-        let Some(player_id) = self.phase_player_queue.pop_back() else {
+        let Some(player_id) = self.phase_player_queue.front().cloned() else {
             unreachable!()
         };
 
@@ -69,7 +80,6 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
             .unwrap(); // fresh deck can't underflow for max players
         let hand: Hand = cards.try_into().unwrap(); // no dupes
         self.player_hands.insert(player_id, hand);
-        // TODO: short delay
     }
 
     fn is_phase_completed(&self) -> bool {
@@ -79,29 +89,32 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
     fn next_phase(self) -> Option<PokerPhase> {
         Some(PokerPhase::FirstBetting(PokerPhaseFirstBetting::from_dealing(self)))
     }
-}
 
-impl PokerPhaseBetting {
-    fn act(&mut self) {
-        todo!()
-    }
-
-    fn is_phase_completed(&self) -> bool {
-        todo!()
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        self.phase_player_queue.front().cloned()
     }
 }
 
 impl PokerPhaseFirstBetting {
     fn from_dealing(dealing_phase: PokerPhaseDealing) -> Self {
         let phase_player_queue = dealing_phase.game_table.clone_player_queue();
+        let player_bets = Self::init_player_bets(&dealing_phase);
         PokerPhaseFirstBetting(
             PokerPhaseBetting {
                 game_table: dealing_phase.game_table,
                 card_deck: dealing_phase.card_deck,
                 phase_player_queue,
                 player_hands: dealing_phase.player_hands,
+                player_bets,
             }
         )
+    }
+
+    fn init_player_bets(dealing_phase: &PokerPhaseDealing) -> HashMap<Uuid, u64> {
+        dealing_phase.player_hands // remaining players
+            .iter()
+            .map(|(player_id, _)| (player_id.clone(), dealing_phase._ante_amount))
+            .collect()
     }
 }
 
@@ -117,6 +130,10 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
     fn next_phase(self) -> Option<PokerPhase> {
         Some(PokerPhase::Drawing(PokerPhaseDrawing::from_first_betting(self)))
     }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        self.0.get_active_player_id()
+    }
 }
 
 impl PokerPhaseDrawing {
@@ -127,6 +144,7 @@ impl PokerPhaseDrawing {
             game_table: betting_phase.0.game_table,
             card_deck: betting_phase.0.card_deck,
             phase_player_queue,
+            _player_bets: betting_phase.0.player_bets,
             player_hands: betting_phase.0.player_hands,
             player_discarded_cards: HashMap::with_capacity(player_count)
         }
@@ -142,6 +160,7 @@ impl PokerPhaseSecondBetting {
                 card_deck: drawing_phase.card_deck,
                 phase_player_queue,
                 player_hands: drawing_phase.player_hands,
+                player_bets: drawing_phase._player_bets
             }
         )
     }
@@ -159,11 +178,21 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
     fn next_phase(self) -> Option<PokerPhase> {
         Some(PokerPhase::Showdown(PokerPhaseShowdown::from_second_betting(self)))
     }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        self.0.phase_player_queue.front().cloned()
+    }
 }
 
 impl PokerPhaseBehavior for PokerPhaseDrawing {
+    /// Handles the optional replacement of player cards.<br />
+    /// Discarded cards are initially declared by everyone (via player action).<br />
+    /// Any players failing to decide within a fixed amount of time get to discard no cards.<br />
+    /// Replacement cards are then dealt back to the players.<br />
+    /// Phase actions are automatically scheduled on a loop until replacement cards are received.<br />
+    /// Player actions do initiate phase actions, but the former aren't really required
     fn act(&mut self) {
-        let Some(player_id) = self.phase_player_queue.pop_back() else {
+        let Some(player_id) = self.phase_player_queue.front().cloned() else {
             unreachable!()
         };
 
@@ -176,6 +205,10 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
 
     fn next_phase(self) -> Option<PokerPhase> {
         Some(PokerPhase::SecondBetting(PokerPhaseSecondBetting::from_drawing(self)))
+    }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        None
     }
 }
 
@@ -192,6 +225,8 @@ impl PokerPhaseShowdown {
 }
 
 impl PokerPhaseBehavior for PokerPhaseShowdown {
+    /// Handles the calculation of player hand rankings.<br />
+    /// A single phase action is automatically scheduled without any player interaction.
     fn act(&mut self) {
         let hands: Vec<Hand> = self.player_hands.values().cloned().collect();
         let winners = hands.determine_winners();
@@ -208,4 +243,16 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
     fn next_phase(self) -> Option<PokerPhase> {
         None
     }
+
+    fn get_active_player_id(&self) -> Option<Uuid> {
+        None
+    }
 }
+
+// fn shift_queue(queue: &mut VecDeque<Uuid>) -> Result<Uuid, AppError> {
+//     let active_player = queue
+//         .pop_front()
+//         .ok_or(Err(AppError::internal("Can't shift an empty queue!")))?;
+//     queue.push_back(active_player);
+//     Ok(active_player)
+// }

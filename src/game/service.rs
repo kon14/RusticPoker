@@ -319,6 +319,16 @@ impl GameService {
         let mut receiver = lobby.state_broadcaster.subscribe();
 
         let stream = async_stream::try_stream! {
+            // Stream Current State
+            match lobby.state_broadcaster.build_state(None).await {
+                Ok(state) => match state.as_player(&player_id) {
+                    Ok(state_as_player) => yield state_as_player,
+                    Err(err) => eprintln!("{}", err),
+                },
+                Err(err) => eprintln!("{}", err),
+            };
+
+            // Stream Upcoming States
             while let Ok(state) = receiver.recv().await {
                 let Some(state) = state else {
                     break;

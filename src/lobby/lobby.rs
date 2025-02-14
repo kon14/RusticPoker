@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
+use futures::FutureExt;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -105,7 +106,7 @@ impl Lobby {
         self.game_acceptance = None;
         self.r#match = Some(r#match);
 
-        self.state_broadcaster.publish_with_lobby(&self).await;
+        self.r#match.as_mut().unwrap().play_poker();
     }
 
     pub async fn start_matchmaking(&mut self) -> Result<(), AppError> {

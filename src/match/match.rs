@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use rand::{rng, seq::SliceRandom};
-use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::game::GamePhase;
 use crate::player::Player;
 use crate::types::hand::Hand;
-use crate::output::{GameState, GameStateBroadcaster};
+use crate::output::GameStateBroadcaster;
 
 #[derive(Clone, Debug)]
 pub struct PlayerState {
@@ -49,10 +48,17 @@ impl Match {
             phase,
         }
     }
+
+    pub fn play_poker(&self) {
+        let mut phase = self.phase.clone(); // TEST
+        tokio::spawn(async move {
+            phase.progress().await;
+        });
+    }
 }
 
 pub(crate) struct MatchStartPlayers {
-    pub(crate) ordered_player_queue: VecDeque<Uuid>,
+    pub(crate) ordered_player_queue: VecDeque<Uuid>, // dealer = 0
     pub(crate) player_credits: HashMap<Uuid, u64>,
     pub(crate) dealer_id: Uuid,
 }
@@ -79,13 +85,3 @@ impl MatchStartPlayers {
         }
     }
 }
-
-// fn sort_player_queue(mut player_queue: VecDeque<Uuid>, dealer_id: Uuid) -> VecDeque<Uuid> {
-//     while let back = player_queue.pop_back().unwrap() {
-//         if back == dealer_id {
-//             break;
-//         }
-//         player_queue.push_front(back);
-//     }
-//     player_queue
-// }

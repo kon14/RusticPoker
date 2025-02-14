@@ -16,6 +16,10 @@ pub(super) struct PokerPhaseBetting {
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
     pub(super) player_hands: HashMap<Uuid, Hand>, // folded hands omitted
+    pub(super) player_bets: HashMap<Uuid, u64>, // folded players omitted
+
+    // TODO: display current player (here or in wrapper struct)
+    //       maybe use HashSet<Uuid> ? that way unordered round phases can omit past players...
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +35,7 @@ pub(super) struct PokerPhaseDealing {
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
+    pub(super) _ante_amount: u64,
     pub(super) player_hands: HashMap<Uuid, Hand>, // folded hands omitted
     //pub(super) player_cards: HashMap<Uuid, HashSet<Card>>,
 }
@@ -43,6 +48,7 @@ pub(super) struct PokerPhaseDrawing {
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
+    pub(super) _player_bets: HashMap<Uuid, u64>,
     pub(super) player_hands: HashMap<Uuid, Hand>, // folded hands omitted
     pub(super) player_discarded_cards: HashMap<Uuid, Option<HashSet<Card>>>,
 }

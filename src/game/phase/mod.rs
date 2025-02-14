@@ -38,29 +38,30 @@ impl GamePhase {
     }
 
     pub async fn progress(&mut self) {
-        // Handle Game Logic
-        self.state_time = Utc::now();
-        self.poker_phase.act();
+        loop {
+            // Handle Game Logic
+            self.state_time = Utc::now();
+            self.poker_phase.act();
 
-        // Build & Publish State
-        self.state_broadcaster.publish().await;
+            // Build & Publish State
+            self.state_broadcaster.publish().await;
 
-        // Contemplate Your Life Choices
-        if let Some(duration) = self.poker_phase.get_post_act_delay() {
-            sleep(duration).await;
-        }
+            // Contemplate Your Life Choices
+            if let Some(duration) = self.poker_phase.get_post_act_delay() {
+                sleep(duration).await;
+            }
 
-        // Handle State Progression
-        if self.poker_phase.is_phase_completed() {
-            if let Some(next_phase) = self.poker_phase.clone().next_phase() {
-                self.poker_phase = next_phase
-            } else {
-                // TODO: Game Over - Cleanup
-                return;
+            // Handle State Progression
+            if self.poker_phase.is_phase_completed() {
+                if let Some(next_phase) = self.poker_phase.clone().next_phase() {
+                    self.poker_phase = next_phase
+                } else {
+                    // TODO: Game Over - Cleanup
+                    return;
+                }
             }
         }
 
-        // Schedule Next Run
         // TODO
         // Player Actions Also Call Progress! Replace Scheduled Run / Respect Sleep Timer
     }

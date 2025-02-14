@@ -98,21 +98,23 @@ impl Iterator for CardRank {
     type Item = CardRank;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            CardRank::Two => Some(CardRank::Three),
-            CardRank::Three => Some(CardRank::Four),
-            CardRank::Four => Some(CardRank::Five),
-            CardRank::Five => Some(CardRank::Six),
-            CardRank::Six => Some(CardRank::Seven),
-            CardRank::Seven => Some(CardRank::Eight),
-            CardRank::Eight => Some(CardRank::Nine),
-            CardRank::Nine => Some(CardRank::Ten),
-            CardRank::Ten => Some(CardRank::Jack),
-            CardRank::Jack => Some(CardRank::Queen),
-            CardRank::Queen => Some(CardRank::King),
-            CardRank::King => Some(CardRank::Ace),
-            CardRank::Ace => None,
-        }
+        let next_rank = match self {
+            CardRank::Two => CardRank::Three,
+            CardRank::Three => CardRank::Four,
+            CardRank::Four => CardRank::Five,
+            CardRank::Five => CardRank::Six,
+            CardRank::Six => CardRank::Seven,
+            CardRank::Seven => CardRank::Eight,
+            CardRank::Eight => CardRank::Nine,
+            CardRank::Nine => CardRank::Ten,
+            CardRank::Ten => CardRank::Jack,
+            CardRank::Jack => CardRank::Queen,
+            CardRank::Queen => CardRank::King,
+            CardRank::King => CardRank::Ace,
+            CardRank::Ace => return None,
+        };
+        *self = next_rank.clone();
+        Some(next_rank)
     }
 }
 
