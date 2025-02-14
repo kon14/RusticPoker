@@ -1,9 +1,10 @@
 mod poker;
+mod progression;
 
 use std::collections::HashMap;
 use std::ops::Deref;
 use chrono::{DateTime, Utc};
-use tokio::time::sleep;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::r#match::MatchStartPlayers;
@@ -24,12 +25,18 @@ impl GamePhase {
     pub fn new(
         match_id: Uuid,
         state_broadcaster: GameStateBroadcaster,
+        rpc_action_broadcaster: broadcast::Sender<()>,
         players: MatchStartPlayers,
         ante_amount: u64,
     ) -> Self {
         let game_table = GameTable::new(match_id, players);
         let card_deck = CardDeck::default();
-        let poker_phase = PokerPhase::new(game_table, card_deck, ante_amount);
+        let poker_phase = PokerPhase::new(
+            rpc_action_broadcaster,
+            game_table,
+            card_deck,
+            ante_amount);
+
         GamePhase {
             poker_phase,
             state_time: Utc::now(),
@@ -37,8 +44,19 @@ impl GamePhase {
         }
     }
 
-    pub async fn progress(&mut self) {
+    pub async fn progress(&mut self, mut rpc_action_receiver: broadcast::Receiver<()>) {
+        let mut first_run = true;
         loop {
+            if first_run {
+                first_run = false;
+            } else if let Some(progression) = self.poker_phase.get_action_progression() {
+                // TODO: mv this in phase
+                progression.await_next_action(&mut rpc_action_receiver).await;
+            } else {
+                // No more progressions...
+                break;
+            }
+
             // Handle Game Logic
             self.state_time = Utc::now();
             self.poker_phase.act();
@@ -46,17 +64,13 @@ impl GamePhase {
             // Build & Publish State
             self.state_broadcaster.publish().await;
 
-            // Contemplate Your Life Choices
-            if let Some(duration) = self.poker_phase.get_post_act_delay() {
-                sleep(duration).await;
-            }
-
             // Handle State Progression
             if self.poker_phase.is_phase_completed() {
                 if let Some(next_phase) = self.poker_phase.clone().next_phase() {
                     self.poker_phase = next_phase
                 } else {
                     // TODO: Game Over - Cleanup
+                    // TODO: handle this via ActionProgression or sth.
                     return;
                 }
             }

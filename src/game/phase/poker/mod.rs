@@ -3,11 +3,13 @@ mod r#impl;
 
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::time::Duration;
+use tokio::sync::broadcast;
 use uuid::Uuid;
+
 use crate::types::hand::{Hand, RateHands};
 use crate::types::deck::CardDeck;
 use crate::game::GameTable;
+use super::progression::ActionProgression;
 use phase::*;
 
 #[derive(Clone, Debug)]
@@ -77,17 +79,54 @@ impl PokerPhaseBehavior for PokerPhase {
 }
 
 impl PokerPhase {
-    pub(super) fn new(game_table: GameTable, card_deck: CardDeck, ante_amount: u64) -> Self {
-        PokerPhase::Ante(PokerPhaseAnte::new(game_table, card_deck, ante_amount))
+    // const RPC_ACTION_EVENT_CHANNEL_CAPACITY: usize = 100;
+
+    pub(super) fn new(
+        rpc_action_broadcaster: broadcast::Sender<()>,
+        game_table: GameTable,
+        card_deck: CardDeck,
+        ante_amount: u64,
+    ) -> Self {
+
+
+        PokerPhase::Ante(PokerPhaseAnte::new(
+            rpc_action_broadcaster,
+            game_table,
+            card_deck,
+            ante_amount,
+        ))
     }
 
-    pub(super) fn get_post_act_delay(&self) -> Option<Duration> {
+    // pub(super) fn get_post_act_delay(&self) -> Option<Duration> {
+    //     match self {
+    //         PokerPhase::Ante(_) => Some(Duration::from_millis(500)),
+    //         PokerPhase::Dealing(_) => Some(Duration::from_millis(500)),
+    //         PokerPhase::FirstBetting(_) => Some(Duration::from_millis(500)),
+    //         PokerPhase::Drawing(_) => Some(Duration::from_millis(500)),
+    //         PokerPhase::SecondBetting(_) => Some(Duration::from_millis(500)),
+    //         PokerPhase::Showdown(_) => None,
+    //     }
+    // }
+
+    // pub(super) fn get_action_progression(&self) -> Option<ActionProgression> {
+    //     match self {
+    //         PokerPhase::Ante(_) => Some(ActionProgression::scheduled(500)),
+    //         PokerPhase::Dealing(_) => Some(ActionProgression::scheduled(500)),
+    //         PokerPhase::FirstBetting(_) => Some(ActionProgression::mixed(500, )),
+    //         PokerPhase::Drawing(_) => Some(ActionProgression::mixed(500, )),
+    //         PokerPhase::SecondBetting(_) => Some(ActionProgression::mixed(500, )),
+    //         PokerPhase::Showdown(_) => None,
+    //     }
+    // }
+
+    pub(super) fn get_action_progression(&self) -> Option<ActionProgression> {
+        // TODO: mv this inside each phase or grab state values from match arm
         match self {
-            PokerPhase::Ante(_) => Some(Duration::from_millis(500)),
-            PokerPhase::Dealing(_) => Some(Duration::from_millis(500)),
-            PokerPhase::FirstBetting(_) => Some(Duration::from_millis(500)),
-            PokerPhase::Drawing(_) => Some(Duration::from_millis(500)),
-            PokerPhase::SecondBetting(_) => Some(Duration::from_millis(500)),
+            PokerPhase::Ante(_) => Some(ActionProgression::delay(500)),
+            PokerPhase::Dealing(_) => Some(ActionProgression::delay(500)),
+            PokerPhase::FirstBetting(_) => Some(ActionProgression::event(10000)),
+            PokerPhase::Drawing(_) => Some(ActionProgression::event(10000)),
+            PokerPhase::SecondBetting(_) => Some(ActionProgression::event(10000)),
             PokerPhase::Showdown(_) => None,
         }
     }

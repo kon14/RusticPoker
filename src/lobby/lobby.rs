@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 use futures::FutureExt;
-use tokio::sync::RwLock;
+use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::common::error::AppError;
@@ -95,9 +95,16 @@ impl Lobby {
     }
 
     pub async fn start_match(&mut self, players: HashSet<Player>) {
+        let (rpc_action_broadcaster, _) = broadcast::channel(
+            // Self::RPC_ACTION_EVENT_CHANNEL_CAPACITY,
+            100, // TODO
+        );
+        let rpc_action_receiver = rpc_action_broadcaster.subscribe();
+
         let r#match = Match::new(
             self.lobby_id,
             self.state_broadcaster.clone(),
+            rpc_action_broadcaster,
             players,
             self.settings.ante_amount,
         );
@@ -106,7 +113,7 @@ impl Lobby {
         self.game_acceptance = None;
         self.r#match = Some(r#match);
 
-        self.r#match.as_mut().unwrap().play_poker();
+        self.r#match.as_mut().unwrap().play_poker(rpc_action_receiver);
     }
 
     pub async fn start_matchmaking(&mut self) -> Result<(), AppError> {

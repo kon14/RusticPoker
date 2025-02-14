@@ -50,17 +50,21 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
 }
 
 impl PokerPhaseBetting {
-    pub(crate) fn is_first_bet(&self) -> bool {
-        self.player_bets.is_empty()
-    }
+    // pub(crate) fn is_first_bet(&self) -> bool {
+    //     self.player_bets.is_empty()
+    // }
 
     pub(super) fn player_folds(&mut self, player_id: Uuid) -> Result<(), AppError> {
         if !self.can_player_act(player_id) {
             return Err(AppError::invalid_request("Player can't act out of turn!"));
         }
-        todo!()
+
+        todo!();
         // TODO: remove from bet amounts, remove hand
         // what if same person runs twice? ignore anyone not with a hand
+
+        self.rpc_action_broadcaster.send(()).unwrap(); // TODO: handle dropped receiver
+        Ok(())
     }
 
     /// Matches the current
@@ -70,7 +74,10 @@ impl PokerPhaseBetting {
         }
         let highest_bet = self.get_highest_bet()
             .ok_or(AppError::invalid_request("No bet to call against!"))?;
-        self.set_player_bet(player_id, highest_bet)
+
+        self.set_player_bet(player_id, highest_bet)?;
+        self.rpc_action_broadcaster.send(()).unwrap(); // TODO: handle dropped receiver
+        Ok(())
     }
 
     /// Sets or raises a player's bet for the betting round.<br />
@@ -83,7 +90,10 @@ impl PokerPhaseBetting {
         if !self.can_player_act(player_id) {
             return Err(AppError::invalid_request("Player can't act out of turn!"));
         }
-        self.set_player_bet(player_id, bet_credits)
+
+        self.set_player_bet(player_id, bet_credits)?;
+        self.rpc_action_broadcaster.send(()).unwrap(); // TODO: handle dropped receiver
+        Ok(())
     }
 }
 

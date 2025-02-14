@@ -3,6 +3,7 @@ mod drawing;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::Deref;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::game::GameTable;
@@ -12,6 +13,7 @@ use crate::types::hand::Hand;
 
 #[derive(Clone, Debug)]
 pub(super) struct PokerPhaseBetting {
+    pub(super) rpc_action_broadcaster: broadcast::Sender<()>,
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
@@ -24,6 +26,7 @@ pub(super) struct PokerPhaseBetting {
 
 #[derive(Clone, Debug)]
 pub(super) struct PokerPhaseAnte {
+    pub(super) _rpc_action_broadcaster: broadcast::Sender<()>,
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
@@ -32,6 +35,7 @@ pub(super) struct PokerPhaseAnte {
 
 #[derive(Clone, Debug)]
 pub(super) struct PokerPhaseDealing {
+    pub(super) _rpc_action_broadcaster: broadcast::Sender<()>,
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,
@@ -45,6 +49,7 @@ pub(super) struct PokerPhaseFirstBetting(pub(super) PokerPhaseBetting);
 
 #[derive(Clone, Debug)]
 pub(super) struct PokerPhaseDrawing {
+    pub(super) rpc_action_broadcaster: broadcast::Sender<()>,
     pub(super) game_table: GameTable,
     pub(super) card_deck: CardDeck,
     pub(super) phase_player_queue: VecDeque<Uuid>,

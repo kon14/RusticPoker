@@ -1,6 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
+use tokio::sync::broadcast;
 use uuid::Uuid;
-use crate::common::error::AppError;
+
 use crate::game::GameTable;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
@@ -8,9 +9,15 @@ use crate::types::hand::{Hand, RateHands};
 use super::{PokerPhase, PokerPhaseBehavior, PokerPhaseAnte, PokerPhaseBetting, PokerPhaseDealing, PokerPhaseDrawing, PokerPhaseFirstBetting, PokerPhaseSecondBetting, PokerPhaseShowdown};
 
 impl PokerPhaseAnte {
-    pub(super) fn new(game_table: GameTable, card_deck: CardDeck, ante_amount: u64) -> Self {
+    pub(super) fn new(
+        rpc_action_broadcaster: broadcast::Sender<()>,
+        game_table: GameTable,
+        card_deck: CardDeck,
+        ante_amount: u64,
+    ) -> Self {
         let phase_player_queue = game_table.clone_player_queue();
         PokerPhaseAnte {
+            _rpc_action_broadcaster: rpc_action_broadcaster,
             game_table,
             card_deck,
             phase_player_queue,
@@ -54,6 +61,7 @@ impl PokerPhaseDealing {
         let phase_player_queue = ante_phase.game_table.clone_player_queue();
         let player_count = phase_player_queue.len();
         PokerPhaseDealing {
+            _rpc_action_broadcaster: ante_phase._rpc_action_broadcaster,
             game_table: ante_phase.game_table,
             card_deck: ante_phase.card_deck,
             phase_player_queue,
@@ -101,6 +109,7 @@ impl PokerPhaseFirstBetting {
         let player_bets = Self::init_player_bets(&dealing_phase);
         PokerPhaseFirstBetting(
             PokerPhaseBetting {
+                rpc_action_broadcaster: dealing_phase._rpc_action_broadcaster,
                 game_table: dealing_phase.game_table,
                 card_deck: dealing_phase.card_deck,
                 phase_player_queue,
@@ -141,6 +150,7 @@ impl PokerPhaseDrawing {
         let phase_player_queue = betting_phase.game_table.clone_player_queue();
         let player_count = phase_player_queue.len();
         PokerPhaseDrawing {
+            rpc_action_broadcaster: betting_phase.0.rpc_action_broadcaster,
             game_table: betting_phase.0.game_table,
             card_deck: betting_phase.0.card_deck,
             phase_player_queue,
@@ -156,6 +166,7 @@ impl PokerPhaseSecondBetting {
         let phase_player_queue = drawing_phase.game_table.clone_player_queue();
         PokerPhaseSecondBetting(
             PokerPhaseBetting{
+                rpc_action_broadcaster: drawing_phase.rpc_action_broadcaster,
                 game_table: drawing_phase.game_table,
                 card_deck: drawing_phase.card_deck,
                 phase_player_queue,
