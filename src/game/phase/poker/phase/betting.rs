@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
+use crate::service::proto::respond_betting_phase_request as proto;
 use crate::common::error::AppError;
 use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use super::PokerPhaseBetting;
@@ -12,11 +13,11 @@ pub struct BettingRound {
 }
 
 #[derive(Clone, Debug)]
-pub enum BettingRoundAction {
-    Fold,
+pub(crate) enum BettingRoundAction {
+    Bet(u64),
     Call,
     Raise(u64),
-    Check,
+    Fold,
 }
 
 impl PokerPhaseBehavior for PokerPhaseBetting {
@@ -50,11 +51,22 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
 }
 
 impl PokerPhaseBetting {
-    // pub(crate) fn is_first_bet(&self) -> bool {
-    //     self.player_bets.is_empty()
-    // }
+    pub(crate) fn handle_betting_action(
+        &mut self,
+        player_id: Uuid,
+        action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        match action {
+            BettingRoundAction::Bet(credits) => self.player_bets_or_raises(player_id, credits),
+            BettingRoundAction::Call => self.player_calls(player_id),
+            BettingRoundAction::Raise(credits) => self.player_bets_or_raises(player_id, credits),
+            BettingRoundAction::Fold => self.player_folds(player_id),
+        }
+    }
+}
 
-    pub(super) fn player_folds(&mut self, player_id: Uuid) -> Result<(), AppError> {
+impl PokerPhaseBetting {
+    fn player_folds(&mut self, player_id: Uuid) -> Result<(), AppError> {
         if !self.can_player_act(player_id) {
             return Err(AppError::invalid_request("Player can't act out of turn!"));
         }
@@ -68,7 +80,7 @@ impl PokerPhaseBetting {
     }
 
     /// Matches the current
-    pub(super) fn player_calls(&mut self, player_id: Uuid) -> Result<(), AppError> {
+    fn player_calls(&mut self, player_id: Uuid) -> Result<(), AppError> {
         if !self.can_player_act(player_id) {
             return Err(AppError::invalid_request("Player can't act out of turn!"));
         }
@@ -82,7 +94,7 @@ impl PokerPhaseBetting {
 
     /// Sets or raises a player's bet for the betting round.<br />
     /// The bet_credits arg contains the compound bet credit amount, not the amount to be raised by!
-    pub(super) fn player_bets_or_raises(
+    fn player_bets_or_raises(
         &mut self,
         player_id: Uuid,
         bet_credits: u64,
@@ -162,5 +174,16 @@ impl PokerPhaseBetting {
             })
             .collect();
         Some((high_bet_amount, high_bettors))
+    }
+}
+
+impl From<proto::BettingAction> for BettingRoundAction {
+    fn from(action: proto::BettingAction) -> Self {
+        match action {
+            proto::BettingAction::Bet(credits) => BettingRoundAction::Bet(credits),
+            proto::BettingAction::Call(_) => BettingRoundAction::Call,
+            proto::BettingAction::Raise(credits) => BettingRoundAction::Raise(credits),
+            proto::BettingAction::Fold(_) => BettingRoundAction::Fold,
+        }
     }
 }

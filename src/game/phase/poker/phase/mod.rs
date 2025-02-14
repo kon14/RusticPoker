@@ -1,6 +1,8 @@
 mod betting;
 mod drawing;
 
+pub(crate) use betting::BettingRoundAction;
+
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::Deref;
 use tokio::sync::broadcast;

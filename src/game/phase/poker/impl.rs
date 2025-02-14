@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use tokio::sync::broadcast;
 use uuid::Uuid;
-
+use crate::common::error::AppError;
 use crate::game::GameTable;
+use crate::game::phase::BettingRoundAction;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
 use crate::types::hand::{Hand, RateHands};
@@ -125,6 +126,14 @@ impl PokerPhaseFirstBetting {
             .map(|(player_id, _)| (player_id.clone(), dealing_phase._ante_amount))
             .collect()
     }
+
+    pub(crate) fn handle_betting_action(
+        &mut self,
+        player_id: Uuid,
+        action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        self.0.handle_betting_action(player_id, action)
+    }
 }
 
 impl PokerPhaseBehavior for PokerPhaseFirstBetting {
@@ -174,6 +183,14 @@ impl PokerPhaseSecondBetting {
                 player_bets: drawing_phase._player_bets
             }
         )
+    }
+
+    pub(crate) fn handle_betting_action(
+        &mut self,
+        player_id: Uuid,
+        action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        self.0.handle_betting_action(player_id, action)
     }
 }
 

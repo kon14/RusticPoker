@@ -1,6 +1,8 @@
 mod poker;
 mod progression;
 
+pub(crate) use poker::BettingRoundAction;
+
 use std::collections::HashMap;
 use std::ops::Deref;
 use chrono::{DateTime, Utc};
@@ -13,6 +15,7 @@ use crate::types::hand::{Hand, RateHands};
 use crate::game::GameTable;
 use crate::output::GameStateBroadcaster;
 use poker::*;
+use crate::common::error::AppError;
 
 #[derive(Clone, Debug)]
 pub struct GamePhase {
@@ -78,6 +81,22 @@ impl GamePhase {
 
         // TODO
         // Player Actions Also Call Progress! Replace Scheduled Run / Respect Sleep Timer
+    }
+
+    pub async fn handle_betting_action(
+        &mut self,
+        player_id: Uuid,
+        betting_action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        self.poker_phase.handle_betting_action(player_id, betting_action).await
+    }
+
+    pub async fn handle_drawing_action(
+        &mut self,
+        player_id: Uuid,
+        // drawing_action: ,
+    ) -> Result<(), AppError> {
+        self.poker_phase.handle_drawing_action(player_id, ).await
     }
 
     // TODO: build inner state internally, grab atomically - re-downgrade PokerPhase.game_table visibility

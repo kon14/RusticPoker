@@ -1,6 +1,8 @@
 mod phase;
 mod r#impl;
 
+pub(crate) use phase::BettingRoundAction;
+
 use std::collections::HashMap;
 use std::ops::Deref;
 use tokio::sync::broadcast;
@@ -11,6 +13,7 @@ use crate::types::deck::CardDeck;
 use crate::game::GameTable;
 use super::progression::ActionProgression;
 use phase::*;
+use crate::common::error::AppError;
 
 #[derive(Clone, Debug)]
 pub(super) enum PokerPhase {
@@ -97,28 +100,6 @@ impl PokerPhase {
         ))
     }
 
-    // pub(super) fn get_post_act_delay(&self) -> Option<Duration> {
-    //     match self {
-    //         PokerPhase::Ante(_) => Some(Duration::from_millis(500)),
-    //         PokerPhase::Dealing(_) => Some(Duration::from_millis(500)),
-    //         PokerPhase::FirstBetting(_) => Some(Duration::from_millis(500)),
-    //         PokerPhase::Drawing(_) => Some(Duration::from_millis(500)),
-    //         PokerPhase::SecondBetting(_) => Some(Duration::from_millis(500)),
-    //         PokerPhase::Showdown(_) => None,
-    //     }
-    // }
-
-    // pub(super) fn get_action_progression(&self) -> Option<ActionProgression> {
-    //     match self {
-    //         PokerPhase::Ante(_) => Some(ActionProgression::scheduled(500)),
-    //         PokerPhase::Dealing(_) => Some(ActionProgression::scheduled(500)),
-    //         PokerPhase::FirstBetting(_) => Some(ActionProgression::mixed(500, )),
-    //         PokerPhase::Drawing(_) => Some(ActionProgression::mixed(500, )),
-    //         PokerPhase::SecondBetting(_) => Some(ActionProgression::mixed(500, )),
-    //         PokerPhase::Showdown(_) => None,
-    //     }
-    // }
-
     pub(super) fn get_action_progression(&self) -> Option<ActionProgression> {
         // TODO: mv this inside each phase or grab state values from match arm
         match self {
@@ -129,6 +110,34 @@ impl PokerPhase {
             PokerPhase::SecondBetting(_) => Some(ActionProgression::event(10000)),
             PokerPhase::Showdown(_) => None,
         }
+    }
+
+    pub(crate) async fn handle_betting_action(
+        &mut self,
+        player_id: Uuid,
+        betting_action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        match self {
+            PokerPhase::FirstBetting(betting_phase) => {
+                betting_phase.handle_betting_action(player_id, betting_action)
+            },
+            PokerPhase::SecondBetting(betting_phase) => {
+                betting_phase.handle_betting_action(player_id, betting_action)
+            },
+            _ => Err(AppError::invalid_request("Game not currently in Betting phase!")),
+        }
+    }
+
+    pub async fn handle_drawing_action(
+        &mut self,
+        player_id: Uuid,
+        // drawing_action: ,
+    ) -> Result<(), AppError> {
+        todo!();
+        // match self {
+        //     PokerPhase::Drawing(drawing_phase) => drawing_phase.,
+        //     _ => Err(AppError::invalid_request("Game not currently in Drawing phase!")),
+        // }
     }
 }
 

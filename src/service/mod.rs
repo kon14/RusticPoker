@@ -30,9 +30,10 @@ use proto::{
     RespondLobbyMatchmakingRequest,
     respond_lobby_matchmaking_request::MatchmakingDecision,
     RespondBettingPhaseRequest,
-    respond_betting_phase_request::BettingPhaseDecision,
+    respond_betting_phase_request::BettingAction,
     RespondDrawingPhaseRequest,
 };
+use crate::common::error::AppError;
 use crate::types::hand::{Hand, RateHands};
 use crate::game::GameService;
 
@@ -206,13 +207,13 @@ impl RusticPoker for RusticPokerService {
     async fn respond_betting_phase(&self, request: Request<RespondBettingPhaseRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let RespondBettingPhaseRequest { decision, raise_amount } = request.into_inner();
+        let RespondBettingPhaseRequest { betting_action } = request.into_inner();
+        let betting_action = betting_action
+            .ok_or(AppError::invalid_request("No BettingAction specified!"))?
+            .into();
 
-        todo!()
-        // let decision = DrawingDecision::try_from(decision)
-        //     .map_err(|_| Status::invalid_argument("Invalid DrawingDecision value provided!"))?;
-        // self.game_service.respond_betting_phase_rpc(player_id, decision).await?;
-        // Ok(Response::new(()))
+        self.game_service.respond_betting_phase_rpc(player_id, betting_action).await?;
+        Ok(Response::new(()))
     }
 
     async fn respond_drawing_phase(&self, request: Request<RespondDrawingPhaseRequest>) -> Result<Response<()>, Status> {

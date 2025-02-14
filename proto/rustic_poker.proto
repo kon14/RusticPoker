@@ -230,14 +230,34 @@ message RespondLobbyMatchmakingRequest {
 //}
 
 message RespondBettingPhaseRequest {
-  BettingPhaseDecision decision = 1;
-  optional uint64 raise_amount = 2;
+//  BettingPhaseDecision decision = 1;
+//  optional uint64 bet_amount = 2;
+//
+//  enum BettingPhaseDecision {
+//    Bet = 0;   // specify bet_amount
+//    Call = 1;
+//    Raise = 2; // specify bet_amount
+//    Fold = 3;
+//  }
 
-  enum BettingPhaseDecision {
-    Call = 0;
-    Raise = 1;
-    Fold = 2;
+  oneof BettingAction {
+    uint64 bet = 1;
+    google.protobuf.Empty call = 2;
+    uint64 raise = 3;
+    google.protobuf.Empty fold = 4;
   }
+
+//  message BetAction {
+//    uint64 bet_amount = 1;
+//  }
+//
+//  message CallAction {}
+//
+//  message RaiseAction {
+//    uint64 bet_amount = 2; // compound amount
+//  }
+//
+//  message FoldAction {}
 }
 
 message RespondDrawingPhaseRequest {

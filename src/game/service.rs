@@ -6,6 +6,8 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
+use crate::game::GamePhase;
+use crate::game::phase::BettingRoundAction;
 use crate::lobby::{Lobby, LobbyRegistry};
 use crate::player::{Player, PlayerRegistry};
 use crate::output::{GameStateAsPlayer, LobbyInfoPublic};
@@ -306,6 +308,85 @@ impl GameService {
                     .collect();
                 lobby_w.start_match(players).await;
             }
+        }
+
+        Ok(())
+    }
+
+    pub async fn respond_betting_phase_rpc(
+        &self,
+        player_id: Uuid,
+        betting_action: BettingRoundAction,
+    ) -> Result<(), AppError> {
+        let lobby_id = {
+            let player_lobby_map_r = self.player_lobby_map.read().await;
+            player_lobby_map_r
+                .get(&player_id)
+                .map(|lobby_id| lobby_id.clone())
+                .ok_or(
+                    AppError::precondition_failed(
+                        format!("Player ({player_id}) not participating in any lobbies!")
+                    )
+                )
+        }?;
+
+        let mut lobby_arc = {
+            let lobby_registry_r = self.lobby_registry.read().await;
+            lobby_registry_r
+                .get_lobby_arc(&lobby_id)
+                .await
+                .ok_or(
+                    AppError::internal("Incomplete state [DEBUG]") // TODO
+                )
+        }?;
+
+        {
+            let mut lobby_w = lobby_arc.write().await;
+            let Some(ref mut r#match) = lobby_w.r#match else {
+                return Err(AppError::invalid_request("Lobby not currently in-game!"))
+            };
+
+            r#match.phase.handle_betting_action(player_id, betting_action).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn respond_drawing_phase_rpc(
+        &self,
+        player_id: Uuid,
+        // drawing_action: ,
+    ) -> Result<(), AppError> {
+        let lobby_id = {
+            let player_lobby_map_r = self.player_lobby_map.read().await;
+            player_lobby_map_r
+                .get(&player_id)
+                .map(|lobby_id| lobby_id.clone())
+                .ok_or(
+                    AppError::precondition_failed(
+                        format!("Player ({player_id}) not participating in any lobbies!")
+                    )
+                )
+        }?;
+
+        let mut lobby_arc = {
+            let lobby_registry_r = self.lobby_registry.read().await;
+            lobby_registry_r
+                .get_lobby_arc(&lobby_id)
+                .await
+                .ok_or(
+                    AppError::internal("Incomplete state [DEBUG]") // TODO
+                )
+        }?;
+
+        {
+            let mut lobby_w = lobby_arc.write().await;
+            let Some(ref mut r#match) = lobby_w.r#match else {
+                return Err(AppError::invalid_request("Lobby not currently in-game!"))
+            };
+
+            todo!();
+            // r#match.phase.handle_drawing_action(player_id, drawing_action).await?;
         }
 
         Ok(())
