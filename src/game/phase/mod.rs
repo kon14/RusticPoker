@@ -51,33 +51,55 @@ impl GamePhase {
     pub async fn progress(phase_arc: Arc<RwLock<GamePhase>>, mut rpc_action_receiver: broadcast::Receiver<()>) {
         let mut first_run = true;
         loop {
-            let mut phase_w = phase_arc.write().await;
-            if first_run {
+
+            // if first_run {
+            //     first_run = false;
+            // } else if let Some(progression) = phase_w.poker_phase.get_action_progression() {
+            //     // TODO: mv this in phase
+            //     progression.await_next_action(&mut rpc_action_receiver).await;
+            // } else {
+            //     // No more progressions...
+            //     break;
+            // }
+
+            // Contemplate Life Choices
+            if !first_run {
+                let progression = {
+                    let mut phase_w = phase_arc.write().await;
+                    phase_w.poker_phase.get_action_progression()
+                };
+                if let Some(progression) = progression {
+                    progression.await_next_action(&mut rpc_action_receiver).await;
+                } else {
+                    // No more progressions...
+                    break;
+                }
                 first_run = false;
-            } else if let Some(progression) = phase_w.poker_phase.get_action_progression() {
-                // TODO: mv this in phase
-                progression.await_next_action(&mut rpc_action_receiver).await;
-            } else {
-                // No more progressions...
-                break;
             }
-            // TODO: split write lock before progression wait...
 
             // Handle Game Logic
-            phase_w.state_time = Utc::now();
-            phase_w.poker_phase.act();
+            let state_broadcaster = {
+                let mut phase_w = phase_arc.write().await;
+                phase_w.state_time = Utc::now();
+                phase_w.poker_phase.act();
+
+                phase_w.state_broadcaster.clone()
+            };
 
             // Build & Publish State
-            phase_w.state_broadcaster.publish().await;
+            state_broadcaster.publish().await;
 
             // Handle State Progression
-            if phase_w.poker_phase.is_phase_completed() {
-                if let Some(next_phase) = phase_w.poker_phase.clone().next_phase() {
-                    phase_w.poker_phase = next_phase
-                } else {
-                    // TODO: Game Over - Cleanup
-                    // TODO: handle this via ActionProgression or sth.
-                    return;
+            {
+                let mut phase_w = phase_arc.write().await;
+                if phase_w.poker_phase.is_phase_completed() {
+                    if let Some(next_phase) = phase_w.poker_phase.clone().next_phase() {
+                        phase_w.poker_phase = next_phase
+                    } else {
+                        // TODO: Game Over - Cleanup
+                        // TODO: handle this via ActionProgression or sth.
+                        return;
+                    }
                 }
             }
         }
