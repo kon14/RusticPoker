@@ -35,6 +35,8 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
         // Player actions handled via RPC calls.
         // Timeout actions handled via a callback.
 
+        // TODO: impl single non-folded player => Showdown
+
         let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
@@ -74,7 +76,7 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
             }
             Ok(())
         }) as Pin<Box<dyn Future<Output = Result<(), AppError>> + Send>>);
-        Some(ActionProgression::event(1000, timeout_handler))
+        Some(ActionProgression::event(15000, timeout_handler))
     }
 }
 
@@ -99,9 +101,12 @@ impl PokerPhaseBetting {
             return Err(AppError::invalid_request("Player can't act out of turn!"));
         }
 
-        todo!();
-        // TODO: remove from bet amounts, remove hand
-        // what if same person runs twice? ignore anyone not with a hand
+        let Some(player_hand) = self.player_hands.remove(&player_id) else {
+            return Ok(());
+        };
+
+        self.card_deck.discard_cards(player_hand.cards.into());
+        self.player_bets.remove(&player_id);
 
         self.rpc_action_broadcaster.send(()).unwrap(); // TODO: handle dropped receiver
         Ok(())

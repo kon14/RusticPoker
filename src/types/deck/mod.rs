@@ -1,9 +1,13 @@
+use std::collections::HashSet;
 use rand::{rng, seq::SliceRandom};
 
 use super::card::{Card, CardRank, CardSuit};
 
 #[derive(Clone, Debug)]
-pub struct CardDeck(Vec<Card>);
+pub struct CardDeck {
+    deck: Vec<Card>,
+    discard_pile: HashSet<Card>,
+}
 
 impl Default for CardDeck {
     fn default() -> Self {
@@ -16,13 +20,11 @@ impl Default for CardDeck {
                     .into_iter()
                     .map(|rank| Card { rank, suit: suit.clone() })
             );
-            // let mut rank_iter = CardRank::Two.into_iter();
-            // deck.push(Card { rank, suit: suit.clone() });
-            // while let Some(rank) = rank_iter.next() {
-            //     deck.push(Card { rank, suit: suit.clone() });
-            // }
         }
-        let mut deck = CardDeck(deck);
+        let mut deck = CardDeck {
+            deck,
+            discard_pile: HashSet::default(),
+        };
         deck.shuffle();
         deck
     }
@@ -30,11 +32,15 @@ impl Default for CardDeck {
 
 impl CardDeck {
     pub fn draw(&mut self) -> Option<Card> {
-        self.0.pop()
+        self.deck.pop()
     }
 
     fn shuffle(&mut self) {
         let mut rng = rng();
-        self.0.shuffle(&mut rng);
+        self.deck.shuffle(&mut rng);
+    }
+
+    pub fn discard_cards(&mut self, cards: HashSet<Card>) {
+        self.discard_pile.extend(cards);
     }
 }
