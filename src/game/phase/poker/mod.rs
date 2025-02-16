@@ -30,9 +30,17 @@ pub(super) trait PokerPhaseBehavior {
 
     fn is_phase_completed(&self) -> bool;
 
-    fn next_phase(self) -> Option<PokerPhase>;
+    fn next_phase(self) -> Option<PokerPhase> where Self: Sized {
+        None
+    }
 
-    fn get_active_player_id(&self) -> Option<Uuid>;
+    fn get_active_player_id(&self) -> Option<Uuid> where Self: Sized {
+        None
+    }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> where Self: Sized {
+        None
+    }
 }
 
 impl PokerPhaseBehavior for PokerPhase {
@@ -101,14 +109,13 @@ impl PokerPhase {
     }
 
     pub(super) fn get_action_progression(&self) -> Option<ActionProgression> {
-        // TODO: mv this inside each phase or grab state values from match arm
         match self {
-            PokerPhase::Ante(_) => Some(ActionProgression::delay(500)),
-            PokerPhase::Dealing(_) => Some(ActionProgression::delay(500)),
-            PokerPhase::FirstBetting(_) => Some(ActionProgression::event(10000)),
-            PokerPhase::Drawing(_) => Some(ActionProgression::event(10000)),
-            PokerPhase::SecondBetting(_) => Some(ActionProgression::event(10000)),
-            PokerPhase::Showdown(_) => None,
+            PokerPhase::Ante(phase) => phase.get_action_progression(),
+            PokerPhase::Dealing(phase) => phase.get_action_progression(),
+            PokerPhase::FirstBetting(phase) => phase.get_action_progression(),
+            PokerPhase::Drawing(phase) => phase.get_action_progression(),
+            PokerPhase::SecondBetting(phase) => phase.get_action_progression(),
+            PokerPhase::Showdown(phase) => phase.get_action_progression(),
         }
     }
 

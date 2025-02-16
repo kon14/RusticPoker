@@ -1,12 +1,19 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::Receiver;
 use tokio::time::sleep;
+
+use crate::common::error::AppError;
+
+type ActionProgressionTimeoutHandler = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send>> + Send + Sync>;
 
 pub(super) enum ActionProgression {
     /// Action waits for a fixed delay.
     Delay(Duration),
     /// Action waits for external events or up to a fixed delay fallback.
-    Event(Duration),
+    Event(Duration, ActionProgressionTimeoutHandler),
 }
 
 // pub(super) enum ActionProgression {
@@ -56,9 +63,9 @@ impl ActionProgression {
         ActionProgression::Delay(duration)
     }
 
-    pub fn event(max_ms: u64) -> ActionProgression {
+    pub fn event(max_ms: u64, timeout_handler: ActionProgressionTimeoutHandler) -> ActionProgression {
         let max_duration = Duration::from_millis(max_ms);
-        ActionProgression::Event(max_duration)
+        ActionProgression::Event(max_duration, timeout_handler)
     }
 
     pub(super) async fn await_next_action(self, event_receiver: &mut Receiver<()>) {
@@ -67,15 +74,15 @@ impl ActionProgression {
             ActionProgression::Delay(duration) => {
                 sleep(duration).await;
             },
-            ActionProgression::Event(max_duration) => {
+            ActionProgression::Event(max_duration, timeout_handler) => {
                 let timer = sleep(max_duration);
                 tokio::select! {
                     _ = timer => {
-                        println!("delay max progression ---- !!!"); // TEST
-                    }
-                    _ = event_receiver.recv() => {
-                        println!("event received --- !!!!") // TEST
-                    }
+                        if let Err(err) = timeout_handler().await {
+                            eprintln!("{err}"); // TODO
+                        }
+                    },
+                    _ = event_receiver.recv() => {},
                 }
             },
         }

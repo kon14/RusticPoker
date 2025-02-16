@@ -51,19 +51,10 @@ impl GamePhase {
     pub async fn progress(phase_arc: Arc<RwLock<GamePhase>>, mut rpc_action_receiver: broadcast::Receiver<()>) {
         let mut first_run = true;
         loop {
-
-            // if first_run {
-            //     first_run = false;
-            // } else if let Some(progression) = phase_w.poker_phase.get_action_progression() {
-            //     // TODO: mv this in phase
-            //     progression.await_next_action(&mut rpc_action_receiver).await;
-            // } else {
-            //     // No more progressions...
-            //     break;
-            // }
-
             // Contemplate Life Choices
-            if !first_run {
+            if first_run {
+                first_run = false;
+            } else {
                 let progression = {
                     let mut phase_w = phase_arc.write().await;
                     phase_w.poker_phase.get_action_progression()
@@ -74,7 +65,6 @@ impl GamePhase {
                     // No more progressions...
                     break;
                 }
-                first_run = false;
             }
 
             // Handle Game Logic

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::common::error::AppError;
 use crate::game::GameTable;
 use crate::game::phase::BettingRoundAction;
+use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
 use crate::types::hand::{Hand, RateHands};
@@ -58,6 +59,10 @@ impl PokerPhaseBehavior for PokerPhaseAnte {
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.phase_player_queue.front().cloned()
     }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> {
+        Some(ActionProgression::delay(500))
+    }
 }
 
 impl PokerPhaseDealing {
@@ -106,6 +111,10 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
 
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.phase_player_queue.front().cloned()
+    }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> {
+        Some(ActionProgression::delay(500))
     }
 }
 
@@ -156,6 +165,10 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
 
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.0.get_active_player_id()
+    }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> {
+        self.0.get_action_progression()
     }
 }
 
@@ -245,6 +258,11 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
     fn get_active_player_id(&self) -> Option<Uuid> {
         None
     }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> {
+        // Some(ActionProgression::event(1000, ))
+        todo!()
+    }
 }
 
 impl PokerPhaseShowdown {
@@ -273,14 +291,6 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
 
     fn is_phase_completed(&self) -> bool {
         todo!()
-    }
-
-    fn next_phase(self) -> Option<PokerPhase> {
-        None
-    }
-
-    fn get_active_player_id(&self) -> Option<Uuid> {
-        None
     }
 }
 

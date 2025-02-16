@@ -1,10 +1,14 @@
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::service::proto::respond_betting_phase_request as proto;
 use crate::common::error::AppError;
 use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use crate::game::phase::poker::r#impl::shift_queue;
+use crate::game::phase::progression::ActionProgression;
 use super::PokerPhaseBetting;
 
 #[derive(Clone, Debug)]
@@ -26,7 +30,8 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
     /// Phase actions are primarily initiated by players.<br />
     /// Players not responding in time fold their hands.
     fn act(&mut self) {
-        todo!();
+        // Player actions handled via RPC calls.
+        // Timeout actions handled via a callback.
 
         let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
@@ -50,6 +55,15 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
 
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.phase_player_queue.front().cloned()
+    }
+
+    fn get_action_progression(&self) -> Option<ActionProgression> {
+        let active_player_id = self.get_active_player_id().unwrap();
+        let timeout_handler = Arc::new(move || Box::pin(async move {
+            println!("Executing async closure... {}", active_player_id);
+            Ok::<(), AppError>(())
+        }) as Pin<Box<dyn Future<Output = Result<(), AppError>> + Send>>);
+        Some(ActionProgression::event(1000, timeout_handler))
     }
 }
 
