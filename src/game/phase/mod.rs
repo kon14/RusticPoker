@@ -60,7 +60,7 @@ impl GamePhase {
                     phase_w.poker_phase.get_action_progression()
                 };
                 if let Some(progression) = progression {
-                    progression.await_next_action(&mut rpc_action_receiver).await;
+                    progression.await_next_action(&mut rpc_action_receiver, phase_arc.clone()).await;
                 } else {
                     // No more progressions...
                     break;
