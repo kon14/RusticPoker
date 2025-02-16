@@ -233,7 +233,7 @@ message RespondBettingPhaseRequest {
   oneof BettingAction {
     uint64 bet = 1;
     google.protobuf.Empty call = 2;
-    uint64 raise = 3;
+    uint64 raise_bet = 3;
     google.protobuf.Empty fold = 4;
   }
 }

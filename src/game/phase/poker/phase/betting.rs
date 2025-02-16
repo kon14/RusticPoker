@@ -185,7 +185,7 @@ impl From<proto::BettingAction> for BettingRoundAction {
         match action {
             proto::BettingAction::Bet(credits) => BettingRoundAction::Bet(credits),
             proto::BettingAction::Call(_) => BettingRoundAction::Call,
-            proto::BettingAction::Raise(credits) => BettingRoundAction::Raise(credits),
+            proto::BettingAction::RaiseBet(credits) => BettingRoundAction::Raise(credits),
             proto::BettingAction::Fold(_) => BettingRoundAction::Fold,
         }
     }

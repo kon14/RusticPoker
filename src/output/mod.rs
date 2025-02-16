@@ -80,9 +80,9 @@ impl MatchState {
 }
 
 impl GamePlayerPublicInfo {
-    pub fn from_match(r#match: &Match) -> HashMap<Uuid, Self> {
-        let player_credits = &r#match
-            .phase
+    pub async fn from_match(r#match: &Match) -> HashMap<Uuid, Self> {
+        let mut game_phase_w = r#match.phase.write().await;
+        let player_credits = &game_phase_w
             .get_table()
             .player_credits;
         player_credits
@@ -144,11 +144,12 @@ impl From<Lobby> for LobbyState {
     }
 }
 
-impl From<Match> for MatchState {
-    fn from(r#match: Match) -> Self {
-        let player_info = GamePlayerPublicInfo::from_match(&r#match);
-        let player_hands = r#match.phase.get_player_hands().cloned();
-        let credit_pots = &r#match.phase.get_table().credit_pots;
+impl MatchState {
+    pub(crate) async fn from_match(r#match: Match) -> Self {
+        let player_info = GamePlayerPublicInfo::from_match(&r#match).await;
+        let mut game_phase_w = r#match.phase.write().await;
+        let player_hands = game_phase_w.get_player_hands().cloned();
+        let credit_pots = &game_phase_w.get_table().credit_pots;
         MatchState {
             match_id: r#match.match_id,
             player_info,

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::lobby::LobbySettings;
 use crate::types::hand::Hand;
 use crate::game::table::{CalculatedPlayerCredits, CreditPot};
+use crate::r#match::Match;
 
 #[derive(Clone, Debug)]
 pub(crate) struct GameState {

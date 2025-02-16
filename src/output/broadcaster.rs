@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::common::error::AppError;
 use crate::lobby::Lobby;
-use crate::output::structs::PlayerState;
+use crate::output::structs::{MatchState, PlayerState};
 use crate::player::PlayerRegistry;
 use super::GameState;
 
@@ -89,7 +89,10 @@ impl GameStateBroadcaster {
 
         let player_states = self.build_player_states(&lobby).await?;
         let lobby_state = lobby.into();
-        let match_state = r#match.map(|r#match| r#match.into());
+        let match_state = match r#match {
+            Some(r#match) => Some(MatchState::from_match(r#match).await),
+            None => None,
+        };
 
         let game_state = GameState::build(
             player_states,

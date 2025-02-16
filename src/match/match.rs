@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 use rand::{rng, seq::SliceRandom};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::game::GamePhase;
@@ -20,7 +21,7 @@ pub(crate) struct Match {
     pub(crate) match_id: Uuid,
     pub(crate) lobby_id: Uuid,
     pub(crate) player_ids: HashSet<Uuid>,
-    pub(crate) phase: GamePhase,
+    pub(crate) phase: Arc<RwLock<GamePhase>>,
 }
 
 impl Match {
@@ -48,14 +49,14 @@ impl Match {
             match_id,
             lobby_id,
             player_ids,
-            phase,
+            phase: Arc::new(RwLock::new(phase)),
         }
     }
 
-    pub fn play_poker(&mut self, rpc_action_receiver: broadcast::Receiver<()>,) {
-        let mut phase = self.phase.clone(); // TODO: Arc this shit!
+    pub async fn play_poker(&mut self, rpc_action_receiver: broadcast::Receiver<()>,) {
+        let phase_arc = self.phase.clone();
         tokio::spawn(async move {
-            phase.progress(rpc_action_receiver).await;
+            GamePhase::progress(phase_arc, rpc_action_receiver).await;
         });
     }
 }

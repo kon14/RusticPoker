@@ -5,8 +5,9 @@ pub(crate) use poker::BettingRoundAction;
 
 use std::collections::HashMap;
 use std::ops::Deref;
+use std::sync::Arc;
 use chrono::{DateTime, Utc};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::r#match::MatchStartPlayers;
@@ -47,30 +48,32 @@ impl GamePhase {
         }
     }
 
-    pub async fn progress(&mut self, mut rpc_action_receiver: broadcast::Receiver<()>) {
+    pub async fn progress(phase_arc: Arc<RwLock<GamePhase>>, mut rpc_action_receiver: broadcast::Receiver<()>) {
         let mut first_run = true;
         loop {
+            let mut phase_w = phase_arc.write().await;
             if first_run {
                 first_run = false;
-            } else if let Some(progression) = self.poker_phase.get_action_progression() {
+            } else if let Some(progression) = phase_w.poker_phase.get_action_progression() {
                 // TODO: mv this in phase
                 progression.await_next_action(&mut rpc_action_receiver).await;
             } else {
                 // No more progressions...
                 break;
             }
+            // TODO: split write lock before progression wait...
 
             // Handle Game Logic
-            self.state_time = Utc::now();
-            self.poker_phase.act();
+            phase_w.state_time = Utc::now();
+            phase_w.poker_phase.act();
 
             // Build & Publish State
-            self.state_broadcaster.publish().await;
+            phase_w.state_broadcaster.publish().await;
 
             // Handle State Progression
-            if self.poker_phase.is_phase_completed() {
-                if let Some(next_phase) = self.poker_phase.clone().next_phase() {
-                    self.poker_phase = next_phase
+            if phase_w.poker_phase.is_phase_completed() {
+                if let Some(next_phase) = phase_w.poker_phase.clone().next_phase() {
+                    phase_w.poker_phase = next_phase
                 } else {
                     // TODO: Game Over - Cleanup
                     // TODO: handle this via ActionProgression or sth.

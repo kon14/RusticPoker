@@ -346,7 +346,8 @@ impl GameService {
                 return Err(AppError::invalid_request("Lobby not currently in-game!"))
             };
 
-            r#match.phase.handle_betting_action(player_id, betting_action).await?;
+            let mut game_phase_w = r#match.phase.write().await;
+            game_phase_w.handle_betting_action(player_id, betting_action).await?;
         }
 
         Ok(())
@@ -386,7 +387,8 @@ impl GameService {
             };
 
             todo!();
-            // r#match.phase.handle_drawing_action(player_id, drawing_action).await?;
+            // let mut game_phase_w = r#match.phase.write().await;
+            // game_phase_w.handle_drawing_action(player_id, drawing_action).await?;
         }
 
         Ok(())

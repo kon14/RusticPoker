@@ -113,7 +113,7 @@ impl Lobby {
         self.game_acceptance = None;
         self.r#match = Some(r#match);
 
-        self.r#match.as_mut().unwrap().play_poker(rpc_action_receiver);
+        self.r#match.as_mut().unwrap().play_poker(rpc_action_receiver).await;
     }
 
     pub async fn start_matchmaking(&mut self) -> Result<(), AppError> {
