@@ -17,6 +17,7 @@ use rand::Rng;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 use futures::stream::{StreamExt, TryStreamExt};
+
 use proto::{
     rustic_poker_server::RusticPoker,
     ConnectRequest,
@@ -33,9 +34,9 @@ use proto::{
     respond_betting_phase_request::BettingAction,
     RespondDrawingPhaseRequest,
 };
+
 use crate::common::error::AppError;
-use crate::types::hand::{Hand, RateHands};
-use crate::game::GameService;
+use crate::game::{DiscardedCards, GameService};
 
 #[derive(Default)]
 pub struct RusticPokerService {
@@ -78,25 +79,6 @@ macro_rules! get_player_id {
 
 #[tonic::async_trait]
 impl RusticPoker for RusticPokerService {
-    // async fn rate_hands(&self, request: Request<RateHandsRequest>) -> Result<Response<RateHandsResponse>, Status> {
-    //     let RateHandsRequest { hands } = request.into_inner();
-    //     if hands.is_empty() {
-    //         return Err(Status::new(tonic::Code::InvalidArgument, "No poker hands provided!"));
-    //     }
-    //     let hands: Result<Vec<Hand>, _> = hands
-    //         .into_iter()
-    //         .map(|h| h.as_str().try_into())
-    //         .collect();
-    //     let Ok(hands) = hands else {
-    //         return Err(Status::new(tonic::Code::InvalidArgument, "Invalid poker hands!"));
-    //     };
-    //     let winners = hands.determine_winners()
-    //         .into_iter()
-    //         .map(|h| h.raw_hand_str)
-    //         .collect();
-    //     Ok(Response::new(RateHandsResponse { winners }))
-    // }
-
     type WatchStateStream = Pin<Box<dyn Stream<Item=Result<proto::GameState, Status>> + Send>>;
 
     async fn connect(&self, request: Request<ConnectRequest>) -> Result<Response<()>, Status> {
@@ -219,11 +201,10 @@ impl RusticPoker for RusticPokerService {
     async fn respond_drawing_phase(&self, request: Request<RespondDrawingPhaseRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let RespondDrawingPhaseRequest { discarded_cards } = request.into_inner();
+        let discarded_cards = DiscardedCards::try_from_proto(request.into_inner())?;
 
-        todo!()
-        // self.game_service.respond_drawing_phase_rpc(player_id, discarded_cards).await?;
-        // Ok(Response::new(()))
+        self.game_service.respond_drawing_phase_rpc(player_id, discarded_cards).await?;
+        Ok(Response::new(()))
     }
 
     async fn watch_state(&self, request: Request<()>) -> Result<Response<Self::WatchStateStream>, Status> {

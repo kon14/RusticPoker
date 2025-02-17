@@ -1,9 +1,14 @@
-use std::collections::{HashMap, VecDeque};
-use tokio::sync::broadcast;
+use std::array;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use itertools::Itertools;
+use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::common::error::AppError;
-use crate::game::GameTable;
+use crate::game::{DiscardedCards, GamePhase, GameTable};
 use crate::game::phase::BettingRoundAction;
 use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
@@ -172,24 +177,8 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
     }
 }
 
-impl PokerPhaseDrawing {
-    fn from_first_betting(betting_phase: PokerPhaseFirstBetting) -> Self {
-        let phase_player_queue = betting_phase.game_table.clone_player_queue();
-        let player_count = phase_player_queue.len();
-        PokerPhaseDrawing {
-            rpc_action_broadcaster: betting_phase.0.rpc_action_broadcaster,
-            game_table: betting_phase.0.game_table,
-            card_deck: betting_phase.0.card_deck,
-            phase_player_queue,
-            _player_bets: betting_phase.0.player_bets,
-            player_hands: betting_phase.0.player_hands,
-            player_discarded_cards: HashMap::with_capacity(player_count)
-        }
-    }
-}
-
 impl PokerPhaseSecondBetting {
-    fn from_drawing(drawing_phase: PokerPhaseDrawing) -> Self {
+    pub(super) fn from_drawing(drawing_phase: PokerPhaseDrawing) -> Self {
         let phase_player_queue = drawing_phase.game_table.clone_player_queue();
         PokerPhaseSecondBetting(
             PokerPhaseBetting{
@@ -227,41 +216,6 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
 
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.0.phase_player_queue.front().cloned()
-    }
-}
-
-impl PokerPhaseBehavior for PokerPhaseDrawing {
-    /// Handles the optional replacement of player cards.<br />
-    /// Discarded cards are initially declared by everyone (via player action).<br />
-    /// Any players failing to decide within a fixed amount of time get to discard no cards.<br />
-    /// Replacement cards are then dealt back to the players.<br />
-    /// Phase actions are automatically scheduled on a loop until replacement cards are received.<br />
-    /// Player actions do initiate phase actions, but the former aren't really required
-    fn act(&mut self) {
-        let Some(player_id) = self.phase_player_queue.front().cloned() else {
-            unreachable!()
-        };
-
-        todo!();
-
-        let _ = shift_queue(&mut self.phase_player_queue); // TODO
-    }
-
-    fn is_phase_completed(&self) -> bool {
-        self.player_discarded_cards.len() == self.game_table.player_ids.len()
-    }
-
-    fn next_phase(self) -> Option<PokerPhase> {
-        Some(PokerPhase::SecondBetting(PokerPhaseSecondBetting::from_drawing(self)))
-    }
-
-    fn get_active_player_id(&self) -> Option<Uuid> {
-        None
-    }
-
-    fn get_action_progression(&self) -> Option<ActionProgression> {
-        // Some(ActionProgression::event(1000, ))
-        todo!()
     }
 }
 

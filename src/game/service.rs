@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
-use crate::game::GamePhase;
+use crate::game::DiscardedCards;
 use crate::game::phase::BettingRoundAction;
 use crate::lobby::{Lobby, LobbyRegistry};
 use crate::player::{Player, PlayerRegistry};
@@ -356,7 +356,7 @@ impl GameService {
     pub async fn respond_drawing_phase_rpc(
         &self,
         player_id: Uuid,
-        // drawing_action: ,
+        discarded_cards: Option<DiscardedCards>,
     ) -> Result<(), AppError> {
         let lobby_id = {
             let player_lobby_map_r = self.player_lobby_map.read().await;
@@ -386,9 +386,8 @@ impl GameService {
                 return Err(AppError::invalid_request("Lobby not currently in-game!"))
             };
 
-            todo!();
-            // let mut game_phase_w = r#match.phase.write().await;
-            // game_phase_w.handle_drawing_action(player_id, drawing_action).await?;
+            let mut game_phase_w = r#match.phase.write().await;
+            game_phase_w.handle_drawing_action(player_id, discarded_cards).await?;
         }
 
         Ok(())

@@ -35,6 +35,13 @@ impl CardDeck {
         self.deck.pop()
     }
 
+    pub fn handle_discard_end(&mut self) {
+        if self.discard_pile.len() > self.deck.len() {
+            self.deck.extend(self.discard_pile.drain());
+            self.shuffle();
+        }
+    }
+
     fn shuffle(&mut self) {
         let mut rng = rng();
         self.deck.shuffle(&mut rng);

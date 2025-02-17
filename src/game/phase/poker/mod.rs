@@ -1,7 +1,7 @@
 mod phase;
 mod r#impl;
 
-pub(crate) use phase::BettingRoundAction;
+pub(crate) use phase::{BettingRoundAction, DiscardedCards};
 
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -138,13 +138,12 @@ impl PokerPhase {
     pub async fn handle_drawing_action(
         &mut self,
         player_id: Uuid,
-        // drawing_action: ,
+        discarded_cards: Option<DiscardedCards>,
     ) -> Result<(), AppError> {
-        todo!();
-        // match self {
-        //     PokerPhase::Drawing(drawing_phase) => drawing_phase.,
-        //     _ => Err(AppError::invalid_request("Game not currently in Drawing phase!")),
-        // }
+        match self {
+            PokerPhase::Drawing(drawing_phase) => drawing_phase.player_discards(player_id, discarded_cards),
+            _ => Err(AppError::invalid_request("Game not currently in Drawing phase!")),
+        }
     }
 }
 

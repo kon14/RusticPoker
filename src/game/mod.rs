@@ -2,6 +2,6 @@ mod phase;
 pub(crate) mod table;
 mod service;
 
-pub use phase::GamePhase;
-pub use table::GameTable;
-pub use service::GameService;
+pub(crate) use phase::{GamePhase, DiscardedCards};
+pub(crate) use table::GameTable;
+pub(crate) use service::GameService;

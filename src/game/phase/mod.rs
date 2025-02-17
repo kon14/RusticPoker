@@ -1,7 +1,7 @@
 mod poker;
 mod progression;
 
-pub(crate) use poker::BettingRoundAction;
+pub(crate) use poker::{BettingRoundAction, DiscardedCards};
 
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -109,9 +109,9 @@ impl GamePhase {
     pub async fn handle_drawing_action(
         &mut self,
         player_id: Uuid,
-        // drawing_action: ,
+        discarded_cards: Option<DiscardedCards>,
     ) -> Result<(), AppError> {
-        self.poker_phase.handle_drawing_action(player_id, ).await
+        self.poker_phase.handle_drawing_action(player_id, discarded_cards).await
     }
 
     // TODO: build inner state internally, grab atomically - re-downgrade PokerPhase.game_table visibility
