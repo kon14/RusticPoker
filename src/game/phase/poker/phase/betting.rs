@@ -42,6 +42,9 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
 
     /// Checks whether everyone has either folded or matched the highest bet.
     fn is_phase_completed(&self) -> bool {
+        if self.last_man_standing() {
+            return true;
+        }
         let Some((_, matched_bettors)) = self.get_highest_bet_with_bettors() else {
             // No bets placed yet
             return false;
@@ -92,6 +95,10 @@ impl PokerPhaseBetting {
             BettingRoundAction::Raise(credits) => self.player_bets_or_raises(player_id, credits),
             BettingRoundAction::Fold => self.player_folds(player_id),
         }
+    }
+
+    pub(crate) fn last_man_standing(&self) -> bool {
+        self.player_hands.len() == 1
     }
 }
 

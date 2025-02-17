@@ -60,7 +60,7 @@ impl PlayerRegistry {
                 missing_player_ids.insert(player_id);
             }
         };
-        if missing_player_ids.len() > 0 {
+        if !missing_player_ids.is_empty() {
             Err(AppError::internal("Missing player IDs!"))
         } else {
             Ok(players)

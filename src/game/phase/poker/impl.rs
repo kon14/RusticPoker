@@ -1,14 +1,9 @@
-use std::array;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use itertools::Itertools;
-use tokio::sync::{broadcast, RwLock};
+use std::collections::{HashMap, VecDeque};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
-use crate::game::{DiscardedCards, GamePhase, GameTable};
+use crate::game::GameTable;
 use crate::game::phase::BettingRoundAction;
 use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
@@ -165,7 +160,11 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
     }
 
     fn next_phase(self) -> Option<PokerPhase> {
-        Some(PokerPhase::Drawing(PokerPhaseDrawing::from_first_betting(self)))
+        if self.0.last_man_standing() {
+            Some(PokerPhase::Showdown(PokerPhaseShowdown::from_betting(self.0)))
+        } else {
+            Some(PokerPhase::Drawing(PokerPhaseDrawing::from_first_betting(self)))
+        }
     }
 
     fn get_active_player_id(&self) -> Option<Uuid> {
@@ -211,7 +210,7 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
     }
 
     fn next_phase(self) -> Option<PokerPhase> {
-        Some(PokerPhase::Showdown(PokerPhaseShowdown::from_second_betting(self)))
+        Some(PokerPhase::Showdown(PokerPhaseShowdown::from_betting(self.0)))
     }
 
     fn get_active_player_id(&self) -> Option<Uuid> {
@@ -220,13 +219,13 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
 }
 
 impl PokerPhaseShowdown {
-    fn from_second_betting(betting_phase: PokerPhaseSecondBetting) -> Self {
+    fn from_betting(betting_phase: PokerPhaseBetting) -> Self {
         let phase_player_queue = betting_phase.game_table.clone_player_queue();
         PokerPhaseShowdown {
-            game_table: betting_phase.0.game_table,
-            card_deck: betting_phase.0.card_deck,
+            game_table: betting_phase.game_table,
+            card_deck: betting_phase.card_deck,
             phase_player_queue,
-            player_hands: betting_phase.0.player_hands,
+            player_hands: betting_phase.player_hands,
         }
     }
 }
