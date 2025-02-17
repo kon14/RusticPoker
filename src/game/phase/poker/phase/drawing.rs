@@ -37,7 +37,8 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
     }
 
     fn is_phase_completed(&self) -> bool {
-        self.player_discarded_cards.len() == self.game_table.player_ids.len()
+        // TODO: fix, skips dealing stage
+        self.player_discarded_cards.len() == self.player_hands.len()
     }
 
     fn next_phase(self) -> Option<PokerPhase> {
@@ -50,20 +51,24 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
     }
 
     fn get_action_progression(&self) -> Option<ActionProgression> {
-        let active_player_id = self.phase_player_queue.front().cloned().unwrap();
-        let timeout_handler = Arc::new(move |game_phase_arc: Arc<RwLock<GamePhase>>| Box::pin(async move {
-            // TODO: improve hacky instance resolution of self
-            let mut game_phase_w = game_phase_arc.write().await;
-            let mut poker_phase = &mut game_phase_w.poker_phase;
-            if let Some(mut drawing_phase) = match poker_phase {
-                PokerPhase::Drawing(ref mut phase) => Some(phase),
-                _ => None,
-            } {
-                drawing_phase.player_discards(active_player_id, None)?;
-            }
-            Ok(())
-        }) as Pin<Box<dyn Future<Output = Result<(), AppError>> + Send>>);
-        Some(ActionProgression::event(15000, timeout_handler))
+        if self.discard_stage_ongoing() {
+            let active_player_id = self.phase_player_queue.front().cloned().unwrap();
+            let timeout_handler = Arc::new(move |game_phase_arc: Arc<RwLock<GamePhase>>| Box::pin(async move {
+                // TODO: improve hacky instance resolution of self
+                let mut game_phase_w = game_phase_arc.write().await;
+                let mut poker_phase = &mut game_phase_w.poker_phase;
+                if let Some(mut drawing_phase) = match poker_phase {
+                    PokerPhase::Drawing(ref mut phase) => Some(phase),
+                    _ => None,
+                } {
+                    drawing_phase.player_discards(active_player_id, None)?;
+                }
+                Ok(())
+            }) as Pin<Box<dyn Future<Output=Result<(), AppError>> + Send>>);
+            Some(ActionProgression::event(15000, timeout_handler))
+        } else {
+            Some(ActionProgression::delay(500))
+        }
     }
 }
 
@@ -96,6 +101,8 @@ impl PokerPhaseDrawing {
             self.card_deck.discard_cards(cards.0);
         };
         self.player_discarded_cards.insert(player_id, cards);
+
+        self.rpc_action_broadcaster.send(()).unwrap(); // TODO: handle dropped receiver
         Ok(())
     }
 
