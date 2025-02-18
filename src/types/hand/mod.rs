@@ -1,4 +1,3 @@
-mod proto;
 mod rank;
 mod tie_breakers;
 

@@ -34,6 +34,7 @@ impl From<GamePlayerPublicInfo> for proto::MatchStatePlayerPublicInfo {
             starting_credits,
             remaining_credits: info.credits.remaining_credits,
             pot_credits,
+            hand_card_count: info.hand_card_count as u32,
         }
     }
 }
@@ -48,11 +49,13 @@ impl From<MatchStateAsPlayer> for proto::MatchState {
             .into_iter()
             .map(|(pot_id, pot)| (pot_id.to_string(), pot.into()))
             .collect();
-        let own_hand = state.player_hand.map(|hand| hand.into());
+        let own_cards = state.player_cards
+            .map(|cards| cards.into_iter().map(|card| card.into()).collect::<Vec<_>>())
+            .unwrap_or_else(|| Vec::with_capacity(0));
         proto::MatchState {
             match_id: state.match_id.to_string(),
             player_info,
-            own_hand,
+            own_cards,
             credit_pots,
         }
     }

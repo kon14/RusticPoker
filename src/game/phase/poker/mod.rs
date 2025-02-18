@@ -5,15 +5,17 @@ pub(crate) use phase::{BettingRoundAction, DiscardedCards};
 
 use std::collections::HashMap;
 use std::ops::Deref;
+use itertools::Itertools;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::types::hand::{Hand, RateHands};
+use crate::types::card::Card;
 use crate::types::deck::CardDeck;
+use crate::types::hand::{Hand, RateHands};
 use crate::game::GameTable;
 use super::progression::ActionProgression;
-use phase::*;
 use crate::common::error::AppError;
+use phase::*;
 
 #[derive(Clone, Debug)]
 pub(super) enum PokerPhase {
@@ -160,15 +162,52 @@ impl PokerPhase {
         }
     }
 
-    // TODO: tmp-only exposure
-    pub fn get_player_hands(&self) -> Option<&HashMap<Uuid, Hand>> {
+    pub fn get_player_cards(&self) -> Option<HashMap<Uuid, Option<Vec<Card>>>> {
         match self {
             PokerPhase::Ante(_) => None,
-            PokerPhase::Dealing(phase) => Some(&phase.player_hands),
-            PokerPhase::FirstBetting(phase) => Some(&phase.player_hands),
-            PokerPhase::Drawing(phase) => Some(&phase.player_hands), // TODO: recheck
-            PokerPhase::SecondBetting(phase) => Some(&phase.player_hands),
-            PokerPhase::Showdown(phase) => Some(&phase.player_hands),
+            PokerPhase::Dealing(phase) => Some(get_cards_from_hands(&phase.player_hands)), // TODO: partial hand
+            PokerPhase::FirstBetting(phase) => Some(get_cards_from_hands(&phase.player_hands)),
+            PokerPhase::SecondBetting(phase) => Some(get_cards_from_hands(&phase.player_hands)),
+            PokerPhase::Showdown(phase) => Some(get_cards_from_hands(&phase.player_hands)),
+            PokerPhase::Drawing(phase) => {
+                let player_hand_cards = get_cards_from_hands(&phase.player_hands);
+                let player_cards = player_hand_cards
+                    .into_iter()
+                    .map(|(player_id, hand_cards)| {
+                        let Some(hand_cards) = hand_cards else {
+                            return (player_id, None);
+                        };
+
+                        let remaining_cards = phase
+                            .player_discarded_cards
+                            .get(&player_id)
+                            .and_then(|discarded_cards| discarded_cards.as_ref())
+                            .map_or(hand_cards.clone(), |discarded_cards| {
+                                hand_cards
+                                    .iter()
+                                    .filter(|card| discarded_cards.contains(card))
+                                    .cloned()
+                                    .collect()
+                            });
+
+                        (player_id, Some(remaining_cards))
+                    })
+                    .collect();
+                Some(player_cards)
+            },
         }
     }
+}
+
+pub(super) fn get_cards_from_hands(player_hands: &HashMap<Uuid, Hand>) -> HashMap<Uuid, Option<Vec<Card>>> {
+    player_hands
+        .iter()
+        .map(|(player_id, hand)| {
+            let cards = hand.cards
+                .clone()
+                .into_iter()
+                .map(|card| card.into()).collect();
+            (player_id.clone(), Some(cards))
+        })
+        .collect()
 }

@@ -11,12 +11,13 @@ use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::r#match::MatchStartPlayers;
+use crate::types::card::Card;
 use crate::types::deck::CardDeck;
-use crate::types::hand::{Hand, RateHands};
+use crate::types::hand::RateHands;
 use crate::game::GameTable;
 use crate::output::GameStateBroadcaster;
-use poker::*;
 use crate::common::error::AppError;
+use poker::*;
 
 #[derive(Clone, Debug)]
 pub struct GamePhase {
@@ -93,9 +94,6 @@ impl GamePhase {
                 }
             }
         }
-
-        // TODO
-        // Player Actions Also Call Progress! Replace Scheduled Run / Respect Sleep Timer
     }
 
     pub async fn handle_betting_action(
@@ -119,8 +117,7 @@ impl GamePhase {
         self.poker_phase.get_table()
     }
 
-    // TODO: build inner state internally, grab atomically - re-downgrade PokerPhase.player_hands visibility
-    pub fn get_player_hands(&self) -> Option<&HashMap<Uuid, Hand>> {
-       self.poker_phase.get_player_hands()
+    pub fn get_player_cards(&self) -> Option<HashMap<Uuid, Option<Vec<Card>>>> {
+        self.poker_phase.get_player_cards()
     }
 }

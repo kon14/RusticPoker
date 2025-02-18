@@ -1,6 +1,7 @@
 use std::array;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
 use futures::StreamExt;
@@ -159,5 +160,13 @@ impl DiscardedCards {
                 .collect::<Result<_, _>>()?;
             Ok(Some(DiscardedCards(discarded_cards)))
         }
+    }
+}
+
+impl Deref for DiscardedCards {
+    type Target = HashSet<Card>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

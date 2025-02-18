@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::lobby::LobbySettings;
 use crate::types::hand::Hand;
 use crate::game::table::{CalculatedPlayerCredits, CreditPot};
-use crate::r#match::Match;
+use crate::types::card::Card;
 
 #[derive(Clone, Debug)]
 pub(crate) struct GameState {
@@ -51,7 +51,7 @@ pub(super) struct LobbyState {
 pub(super) struct MatchState {
     pub(super) match_id: Uuid,
     pub(super) player_info: HashMap<Uuid, GamePlayerPublicInfo>,
-    pub(super) player_hands: Option<HashMap<Uuid, Hand>>,
+    pub(super) player_cards: Option<HashMap<Uuid, Option<Vec<Card>>>>,
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
 }
 
@@ -59,7 +59,7 @@ pub(super) struct MatchState {
 pub(super) struct MatchStateAsPlayer {
     pub(super) match_id: Uuid,
     pub(super) player_info: HashMap<Uuid, GamePlayerPublicInfo>,
-    pub(super) player_hand: Option<Hand>,
+    pub(super) player_cards: Option<Vec<Card>>,
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
 }
 
@@ -68,6 +68,7 @@ pub(super) struct GamePlayerPublicInfo {
     pub(super) player_id: Uuid,
     // pub(super) name: String,
     pub(super) credits: CalculatedPlayerCredits,
+    pub(super) hand_card_count: u8,
 }
 
 pub(crate) struct LobbyInfoPublic {

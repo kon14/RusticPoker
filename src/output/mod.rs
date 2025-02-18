@@ -57,12 +57,13 @@ impl GameState {
 
 impl MatchState {
     pub fn as_player(&self, player_id: &Uuid) -> Result<MatchStateAsPlayer, AppError> {
-        let player_hand = self.player_hands
+        let player_cards = self.player_cards
             .as_ref()
-            .map(|player_hands| {
-                player_hands
+            .map(|player_cards| {
+                player_cards
                     .get(player_id)
                     .map(|hand| hand.clone())
+                    .flatten()
                     .ok_or_else(|| AppError::unauthorized(
                         format!("Player ({}) not participating in match ({})!", player_id, self.match_id)
                     ))
@@ -72,7 +73,7 @@ impl MatchState {
         let state = MatchStateAsPlayer {
             match_id: self.match_id,
             player_info: self.player_info.clone(),
-            player_hand,
+            player_cards,
             credit_pots: self.credit_pots.clone(),
         };
         Ok(state)
@@ -82,17 +83,28 @@ impl MatchState {
 impl GamePlayerPublicInfo {
     pub async fn from_match(r#match: &Match) -> HashMap<Uuid, Self> {
         let mut game_phase_w = r#match.phase.write().await;
-        let player_credits = &game_phase_w
+        let player_credits = game_phase_w
             .get_table()
-            .player_credits;
+            .player_credits
+            .clone();
+
+        let cards_in_hand = &game_phase_w
+            .get_player_cards();
+
         player_credits
             .into_iter()
-            .map(|(player_id, credits)| {
+            .map(|(player_id, self_credits)| {
+                let self_hand_card_count = cards_in_hand
+                    .as_ref()
+                    .and_then(|map| map.get(&player_id))
+                    .and_then(|cards_option| cards_option.as_ref())
+                    .map_or(0, |cards| cards.len() as u8);
                 let info = GamePlayerPublicInfo {
                     player_id: player_id.clone(),
-                    credits: credits.clone(),
+                    credits: self_credits,
+                    hand_card_count: self_hand_card_count,
                 };
-                (player_id.clone(), info)
+                (player_id, info)
             })
             .collect()
     }
@@ -148,12 +160,12 @@ impl MatchState {
     pub(crate) async fn from_match(r#match: Match) -> Self {
         let player_info = GamePlayerPublicInfo::from_match(&r#match).await;
         let mut game_phase_w = r#match.phase.write().await;
-        let player_hands = game_phase_w.get_player_hands().cloned();
+        let player_cards = game_phase_w.get_player_cards();
         let credit_pots = &game_phase_w.get_table().credit_pots;
         MatchState {
             match_id: r#match.match_id,
             player_info,
-            player_hands,
+            player_cards,
             credit_pots: credit_pots.clone()
         }
     }

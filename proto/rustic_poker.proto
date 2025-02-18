@@ -95,7 +95,7 @@ message MatchState {
   map<string, MatchStatePlayerPublicInfo> player_info = 2;
   map<string, MatchStateCreditPot> credit_pots = 3;
   //  MatchStatePlayerInfo own_info = 4;
-  optional Hand own_hand = 4;
+  repeated Card own_cards = 4;
   ////  MatchStateRoundState round_state = 6;
 //  repeated string player_ids = 2;
 }
@@ -175,16 +175,13 @@ message Card {
 //  string card = 1;
 }
 
-message Hand {
-  repeated Card cards = 1;
-}
-
 message MatchStatePlayerPublicInfo {
   string player_id = 1;
 //  string name = 2;
   uint64 starting_credits = 2;
   uint64 remaining_credits = 3;
   map<string, uint64> pot_credits = 4;
+  uint32 hand_card_count = 5;
 }
 
 message MatchStateCreditPot {
