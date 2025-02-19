@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::common::error::AppError;
 use crate::lobby::LobbySettings;
+use crate::game::PokerPhase;
 use crate::player::{Player, PlayerRegistry};
 use crate::r#match::Match;
 use crate::output::GameStateBroadcaster;
@@ -96,8 +97,7 @@ impl Lobby {
 
     pub async fn start_match(&mut self, players: HashSet<Player>) {
         let (rpc_action_broadcaster, _) = broadcast::channel(
-            // Self::RPC_ACTION_EVENT_CHANNEL_CAPACITY,
-            100, // TODO
+            PokerPhase::RPC_ACTION_EVENT_CHANNEL_CAPACITY,
         );
         let rpc_action_receiver = rpc_action_broadcaster.subscribe();
 

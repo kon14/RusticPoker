@@ -52,6 +52,32 @@ message GameState {
   LobbyState lobby_state = 2;
   optional MatchState match_state = 3;
   google.protobuf.Timestamp timestamp = 4;
+
+  message MatchState {
+    string match_id = 1;
+    map<string, MatchStatePlayerPublicInfo> player_info = 2;
+    map<string, MatchStateCreditPot> credit_pots = 3;
+    repeated Card own_cards = 4;
+    map<string, uint64> player_bet_amounts = 5; // only live players, pre-showdown
+    // TODO: field for current actor/actors ???
+//    PokerPhase poker_phase = 6; // phase-specific data
+
+    message MatchStatePlayerPublicInfo {
+      string player_id = 1;
+      //  string name = 2;
+      uint64 starting_credits = 2;
+      uint64 remaining_credits = 3;
+      map<string, uint64> pot_credits = 4;
+      uint32 hand_card_count = 5;
+    }
+
+    message MatchStateCreditPot {
+      string pot_id = 1;
+      bool is_main_pot = 2;
+      uint64 total_credits = 3;
+      map<string, uint64> player_credits = 4;
+    }
+  }
 }
 
 message PlayerState {
@@ -90,25 +116,6 @@ message LobbySettings {
   }
 }
 
-message MatchState {
-  string match_id = 1;
-  map<string, MatchStatePlayerPublicInfo> player_info = 2;
-  map<string, MatchStateCreditPot> credit_pots = 3;
-  //  MatchStatePlayerInfo own_info = 4;
-  repeated Card own_cards = 4;
-  ////  MatchStateRoundState round_state = 6;
-//  repeated string player_ids = 2;
-}
-
-//message LobbyInfoPrivate {
-//  string id = 1;
-//  string name = 2;
-//  string host_player_id = 3;
-//  repeated PlayerInfo players = 4;
-//  LobbyStatus status = 5;
-//  map<string, bool> matchmaking_acceptance = 6; // user ID -> accept
-//}
-
 message GetLobbiesResponse {
   repeated LobbyInfoPublic lobbies = 1;
 }
@@ -123,23 +130,6 @@ message JoinLobbyRequest {
 
 //message KickLobbyPlayerRequest {
 //  string player_id = 1;
-//}
-
-//message ShowdownPotWinner {
-//  string pot_id = 1;
-//  repeated string player_ids = 2;
-//  uint64 total_credits = 3;
-//  uint64 credits_per_winner = 4;
-//}
-//
-//message ShowdownRankPlayers {
-//  // Multiple players may share the same rank.
-//  repeated string player_ids = 1;
-//}
-//
-//message ShowdownResults {
-//  map<uint32, ShowdownRankPlayers> user_ranks = 1;
-//  repeated ShowdownPotWinner pot_winners = 2;
 //}
 
 message Card {
@@ -168,37 +158,58 @@ message Card {
     Queen = 11;
     King = 12;
   }
-
-//  // RANK:  A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K
-//  // SUITE: D, H, C, S
-//  // String Format: {RANK}{SUITE}
-//  string card = 1;
 }
 
-message MatchStatePlayerPublicInfo {
-  string player_id = 1;
-//  string name = 2;
-  uint64 starting_credits = 2;
-  uint64 remaining_credits = 3;
-  map<string, uint64> pot_credits = 4;
-  uint32 hand_card_count = 5;
-}
-
-message MatchStateCreditPot {
-  string pot_id = 1;
-  bool is_main_pot = 2;
-  uint64 total_credits = 3;
-  map<string, uint64> player_credits = 4;
-}
-
-//enum MatchStateRoundPhase {
+//message PokerPhase {
+//  // TODO: all phases should include acting player/s and perhaps a can_act bool for self
 //
-//}
+//  oneof phase {
+//    google.protobuf.Empty ante = 1;
+//    PokerPhaseBetting first_betting = 2;
+//    PokerPhaseDrawing drawing = 3;
+//    PokerPhaseBetting second_betting = 4;
+//    PokerPhaseShowdown showdown = 5;
+//  }
 //
-//message MatchStateRoundState {
-//  MatchStateRoundPhase phase = 1;
-//  oneof data {
+//  message PokerPhaseBetting {
+//    optional uint64 highest_bet_amount = 1;
+//    optional uint64 own_bet_amount = 2;
+//  }
 //
+//  message PokerPhaseDrawing {
+//    bool discard_stage = 1;
+//    map<string, Card> own_discarded_cards = 2;
+//    // TODO: list map<Uuid, u32> player_discarded_card_count ? or infer by cand count in base state ?
+//  }
+//
+//  message PokerPhaseShowdown {
+//    optional ShowdownResults results = 1;
+//
+//    message ShowdownResults {
+//      PokerHandRank winning_rank = 1;
+//      repeated string winner_ids = 2;
+//      repeated ShowdownPotWinner pot_winners = 3;
+//
+//      enum PokerHandRank {
+//          RoyalFlush = 0;
+//          StraightFlush = 1;
+//          FourOfAKind = 2;
+//          FullHouse = 3;
+//          Flush = 4;
+//          Straight = 5;
+//          ThreeOfAKind = 6;
+//          TwoPair = 7;
+//          Pair = 8;
+//          HighCard = 9;
+//      }
+//
+//      message ShowdownPotWinner {
+//        string pot_id = 1;
+//        repeated string player_ids = 2;
+//        uint64 total_credits = 3;
+//        uint64 credits_per_winner = 4;
+//      }
+//    }
 //  }
 //}
 
@@ -219,12 +230,6 @@ message RespondLobbyMatchmakingRequest {
     DECLINE = 1;
   }
 }
-
-//message PlayerInfo {
-//  string id = 1;
-//  string name = 2;
-//  uint64 credits = 3;
-//}
 
 message RespondBettingPhaseRequest {
   oneof BettingAction {

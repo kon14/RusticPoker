@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
 use crate::service::proto;
@@ -22,14 +23,14 @@ impl From<LobbyStatus> for proto::LobbyStatus {
     }
 }
 
-impl From<GamePlayerPublicInfo> for proto::MatchStatePlayerPublicInfo {
+impl From<GamePlayerPublicInfo> for proto::game_state::match_state::MatchStatePlayerPublicInfo {
     fn from(info: GamePlayerPublicInfo) -> Self {
         let starting_credits = info.credits.get_starting_credits();
         let pot_credits = info.credits.pot_credits
             .into_iter()
             .map(|(pot_id, credits)| (pot_id.to_string(), credits))
             .collect();
-        proto::MatchStatePlayerPublicInfo {
+        proto::game_state::match_state::MatchStatePlayerPublicInfo {
             player_id: info.player_id.to_string(),
             starting_credits,
             remaining_credits: info.credits.remaining_credits,
@@ -39,7 +40,7 @@ impl From<GamePlayerPublicInfo> for proto::MatchStatePlayerPublicInfo {
     }
 }
 
-impl From<MatchStateAsPlayer> for proto::MatchState {
+impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
     fn from(state: MatchStateAsPlayer) -> Self {
         let player_info = state.player_info
             .into_iter()
@@ -52,11 +53,21 @@ impl From<MatchStateAsPlayer> for proto::MatchState {
         let own_cards = state.player_cards
             .map(|cards| cards.into_iter().map(|card| card.into()).collect::<Vec<_>>())
             .unwrap_or_else(|| Vec::with_capacity(0));
-        proto::MatchState {
+        let player_bet_amounts = state.player_bet_amounts
+            .map_or_else(HashMap::new, |player_bet_amounts| {
+                player_bet_amounts
+                    .into_iter()
+                    .map(|(player_id, bet)| (player_id.to_string(), bet))
+                    .collect()
+            });
+        // let poker_phase = todo!();
+        proto::game_state::MatchState {
             match_id: state.match_id.to_string(),
             player_info,
-            own_cards,
             credit_pots,
+            own_cards,
+            player_bet_amounts,
+            // poker_phase,
         }
     }
 }

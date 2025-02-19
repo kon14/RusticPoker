@@ -63,6 +63,16 @@ impl PokerPhaseBehavior for PokerPhaseAnte {
     fn get_action_progression(&self) -> Option<ActionProgression> {
         Some(ActionProgression::delay(500))
     }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        let main_pot = self.game_table.credit_pots.values().next().unwrap();
+        let player_bet_amounts = main_pot
+            .get_participants()
+            .into_iter()
+            .map(|player_id| (player_id, self.ante_amount))
+            .collect();
+        Some(player_bet_amounts)
+    }
 }
 
 impl PokerPhaseDealing {
@@ -115,6 +125,16 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
 
     fn get_action_progression(&self) -> Option<ActionProgression> {
         Some(ActionProgression::delay(500))
+    }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        let main_pot = self.game_table.credit_pots.values().next().unwrap();
+        let player_bet_amounts = main_pot
+            .get_participants()
+            .into_iter()
+            .map(|player_id| (player_id, self._ante_amount))
+            .collect();
+        Some(player_bet_amounts)
     }
 }
 
@@ -174,6 +194,10 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
     fn get_action_progression(&self) -> Option<ActionProgression> {
         self.0.get_action_progression()
     }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        self.0.get_player_bet_amounts()
+    }
 }
 
 impl PokerPhaseSecondBetting {
@@ -215,6 +239,10 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
 
     fn get_active_player_id(&self) -> Option<Uuid> {
         self.0.phase_player_queue.front().cloned()
+    }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        self.0.get_player_bet_amounts()
     }
 }
 

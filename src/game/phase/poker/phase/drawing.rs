@@ -71,6 +71,10 @@ impl PokerPhaseBehavior for PokerPhaseDrawing {
             Some(ActionProgression::delay(500))
         }
     }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        Some(self._player_bets.clone())
+    }
 }
 
 impl PokerPhaseDrawing {

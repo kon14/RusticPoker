@@ -75,6 +75,7 @@ impl MatchState {
             player_info: self.player_info.clone(),
             player_cards,
             credit_pots: self.credit_pots.clone(),
+            player_bet_amounts: self.player_bet_amounts.clone(),
         };
         Ok(state)
     }
@@ -161,12 +162,14 @@ impl MatchState {
         let player_info = GamePlayerPublicInfo::from_match(&r#match).await;
         let mut game_phase_w = r#match.phase.write().await;
         let player_cards = game_phase_w.get_player_cards();
-        let credit_pots = &game_phase_w.get_table().credit_pots;
+        let credit_pots = game_phase_w.get_table().credit_pots.clone();
+        let player_bet_amounts = game_phase_w.get_player_bet_amounts();
         MatchState {
             match_id: r#match.match_id,
             player_info,
             player_cards,
-            credit_pots: credit_pots.clone()
+            credit_pots,
+            player_bet_amounts,
         }
     }
 }

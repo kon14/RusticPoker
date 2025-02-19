@@ -1,7 +1,7 @@
 mod poker;
 mod progression;
 
-pub(crate) use poker::{BettingRoundAction, DiscardedCards};
+pub(crate) use poker::{PokerPhase, BettingRoundAction, DiscardedCards};
 
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -119,5 +119,9 @@ impl GamePhase {
 
     pub fn get_player_cards(&self) -> Option<HashMap<Uuid, Option<Vec<Card>>>> {
         self.poker_phase.get_player_cards()
+    }
+
+    pub fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        self.poker_phase.get_player_bet_amounts()
     }
 }

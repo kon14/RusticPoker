@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 use crate::common::error::AppError;
-use crate::service::proto;
+use crate::service::proto::game_state::match_state as proto;
 
 #[derive(Clone, Debug)]
 pub(crate) struct CreditPot {

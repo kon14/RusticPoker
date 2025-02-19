@@ -18,7 +18,7 @@ use crate::common::error::AppError;
 use phase::*;
 
 #[derive(Clone, Debug)]
-pub(super) enum PokerPhase {
+pub(crate) enum PokerPhase {
     Ante(PokerPhaseAnte),
     Dealing(PokerPhaseDealing),
     FirstBetting(PokerPhaseFirstBetting),
@@ -41,6 +41,10 @@ pub(super) trait PokerPhaseBehavior {
     }
 
     fn get_action_progression(&self) -> Option<ActionProgression> where Self: Sized {
+        None
+    }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         None
     }
 }
@@ -89,10 +93,21 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Showdown(phase) => phase.get_active_player_id(),
         }
     }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        match self {
+            PokerPhase::Ante(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::Dealing(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::FirstBetting(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::Drawing(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::SecondBetting(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::Showdown(phase) => phase.get_player_bet_amounts(),
+        }
+    }
 }
 
 impl PokerPhase {
-    // const RPC_ACTION_EVENT_CHANNEL_CAPACITY: usize = 100;
+    pub(crate) const RPC_ACTION_EVENT_CHANNEL_CAPACITY: usize = 100;
 
     pub(super) fn new(
         rpc_action_broadcaster: broadcast::Sender<()>,

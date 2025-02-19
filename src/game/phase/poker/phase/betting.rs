@@ -35,8 +35,6 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
         // Player actions handled via RPC calls.
         // Timeout actions handled via a callback.
 
-        // TODO: impl single non-folded player => Showdown
-
         let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
@@ -80,6 +78,10 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
             Ok(())
         }) as Pin<Box<dyn Future<Output = Result<(), AppError>> + Send>>);
         Some(ActionProgression::event(15000, timeout_handler))
+    }
+
+    fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
+        Some(self.player_bets.clone())
     }
 }
 

@@ -18,23 +18,6 @@ use tonic::{Request, Response, Status};
 use uuid::Uuid;
 use futures::stream::{StreamExt, TryStreamExt};
 
-use proto::{
-    rustic_poker_server::RusticPoker,
-    ConnectRequest,
-    GetLobbiesResponse,
-    CreateLobbyRequest,
-    JoinLobbyRequest,
-    // KickLobbyPlayerRequest,
-    // LobbyInfoPrivate,
-    SetLobbyMatchmakingStatusRequest,
-    set_lobby_matchmaking_status_request::MatchmakingStatus,
-    RespondLobbyMatchmakingRequest,
-    respond_lobby_matchmaking_request::MatchmakingDecision,
-    RespondBettingPhaseRequest,
-    respond_betting_phase_request::BettingAction,
-    RespondDrawingPhaseRequest,
-};
-
 use crate::common::error::AppError;
 use crate::game::{DiscardedCards, GameService};
 
@@ -78,10 +61,10 @@ macro_rules! get_player_id {
 }
 
 #[tonic::async_trait]
-impl RusticPoker for RusticPokerService {
+impl proto::rustic_poker_server::RusticPoker for RusticPokerService {
     type WatchStateStream = Pin<Box<dyn Stream<Item=Result<proto::GameState, Status>> + Send>>;
 
-    async fn connect(&self, request: Request<ConnectRequest>) -> Result<Response<()>, Status> {
+    async fn connect(&self, request: Request<proto::ConnectRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
 
         let mut player_connections_w = self.player_connections.write().await;
@@ -106,30 +89,30 @@ impl RusticPoker for RusticPokerService {
         Ok(Response::new(()))
     }
 
-    async fn get_lobbies(&self, _: Request<()>) -> Result<Response<GetLobbiesResponse>, Status> {
+    async fn get_lobbies(&self, _: Request<()>) -> Result<Response<proto::GetLobbiesResponse>, Status> {
         let lobbies = self.game_service
             .get_lobbies_rpc()
             .await
             .into_iter()
             .map(|lobby| lobby.into())
             .collect();
-        Ok(Response::new(GetLobbiesResponse{ lobbies }))
+        Ok(Response::new(proto::GetLobbiesResponse{ lobbies }))
     }
 
     // TODO: return LobbyInfoPrivate instead
-    async fn create_lobby(&self, request: Request<CreateLobbyRequest>) -> Result<Response<(proto::LobbyInfoPublic)>, Status> {
+    async fn create_lobby(&self, request: Request<proto::CreateLobbyRequest>) -> Result<Response<(proto::LobbyInfoPublic)>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let CreateLobbyRequest { lobby_name } = request.into_inner();
+        let proto::CreateLobbyRequest { lobby_name } = request.into_inner();
 
         let lobby = self.game_service.create_lobby_rpc(lobby_name, player_id).await?;
         Ok(Response::new(lobby.into()))
     }
 
-    async fn join_lobby(&self, request: Request<JoinLobbyRequest>) -> Result<Response<()>, Status> {
+    async fn join_lobby(&self, request: Request<proto::JoinLobbyRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let JoinLobbyRequest { lobby_id } = request.into_inner();
+        let proto::JoinLobbyRequest { lobby_id } = request.into_inner();
 
         let lobby_id = Uuid::parse_str(&lobby_id)
             .map_err(|_|
@@ -154,26 +137,26 @@ impl RusticPoker for RusticPokerService {
     //     Ok(Response::new(()))
     // }
 
-    async fn set_lobby_matchmaking_status(&self, request: Request<SetLobbyMatchmakingStatusRequest>) -> Result<Response<()>, Status> {
+    async fn set_lobby_matchmaking_status(&self, request: Request<proto::SetLobbyMatchmakingStatusRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let SetLobbyMatchmakingStatusRequest { status } = request.into_inner();
+        let proto::SetLobbyMatchmakingStatusRequest { status } = request.into_inner();
 
-        let status = MatchmakingStatus::try_from(status)
+        let status = proto::set_lobby_matchmaking_status_request::MatchmakingStatus::try_from(status)
             .map_err(|_| Status::invalid_argument("Invalid MatchmakingStatus value"))?;
-        let matchmaking = status == MatchmakingStatus::Matchmaking;
+        let matchmaking = status == proto::set_lobby_matchmaking_status_request::MatchmakingStatus::Matchmaking;
         self.game_service.set_lobby_matchmaking_status_rpc(player_id, matchmaking).await?;
         Ok(Response::new(()))
     }
 
-    async fn respond_lobby_matchmaking(&self, request: Request<RespondLobbyMatchmakingRequest>) -> Result<Response<()>, Status> {
+    async fn respond_lobby_matchmaking(&self, request: Request<proto::RespondLobbyMatchmakingRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let RespondLobbyMatchmakingRequest { decision } = request.into_inner();
+        let proto::RespondLobbyMatchmakingRequest { decision } = request.into_inner();
 
-        let decision = MatchmakingDecision::try_from(decision)
+        let decision = proto::respond_lobby_matchmaking_request::MatchmakingDecision::try_from(decision)
             .map_err(|_| Status::invalid_argument("Invalid MatchmakingDecision value provided!"))?;
-        let acceptance = decision == MatchmakingDecision::Accept;
+        let acceptance = decision == proto::respond_lobby_matchmaking_request::MatchmakingDecision::Accept;
         self.game_service.respond_lobby_matchmaking_rpc(player_id, acceptance).await?;
         Ok(Response::new(()))
     }
@@ -186,10 +169,10 @@ impl RusticPoker for RusticPokerService {
         Ok(Response::new(()))
     }
 
-    async fn respond_betting_phase(&self, request: Request<RespondBettingPhaseRequest>) -> Result<Response<()>, Status> {
+    async fn respond_betting_phase(&self, request: Request<proto::RespondBettingPhaseRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
-        let RespondBettingPhaseRequest { betting_action } = request.into_inner();
+        let proto::RespondBettingPhaseRequest { betting_action } = request.into_inner();
         let betting_action = betting_action
             .ok_or(AppError::invalid_request("No BettingAction specified!"))?
             .into();
@@ -198,7 +181,7 @@ impl RusticPoker for RusticPokerService {
         Ok(Response::new(()))
     }
 
-    async fn respond_drawing_phase(&self, request: Request<RespondDrawingPhaseRequest>) -> Result<Response<()>, Status> {
+    async fn respond_drawing_phase(&self, request: Request<proto::RespondDrawingPhaseRequest>) -> Result<Response<()>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
         let discarded_cards = DiscardedCards::try_from_proto(request.into_inner())?;
