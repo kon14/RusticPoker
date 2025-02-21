@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -11,7 +12,7 @@ use crate::game::GamePhase;
 use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use crate::game::phase::poker::r#impl::shift_queue;
 use crate::game::phase::progression::ActionProgression;
-use super::PokerPhaseBetting;
+use super::{PokerPhaseBetting, PokerPhaseFirstBetting, PokerPhaseSecondBetting};
 
 #[derive(Clone, Debug)]
 pub struct BettingRound {
@@ -216,6 +217,34 @@ impl PokerPhaseBetting {
             })
             .collect();
         Some((high_bet_amount, high_bettors))
+    }
+}
+
+impl Deref for PokerPhaseFirstBetting {
+    type Target = PokerPhaseBetting;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for PokerPhaseSecondBetting {
+    type Target = PokerPhaseBetting;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<PokerPhaseBetting> for PokerPhaseFirstBetting {
+    fn as_ref(&self) -> &PokerPhaseBetting {
+        &self.0
+    }
+}
+
+impl AsRef<PokerPhaseBetting> for PokerPhaseSecondBetting {
+    fn as_ref(&self) -> &PokerPhaseBetting {
+        &self.0
     }
 }
 

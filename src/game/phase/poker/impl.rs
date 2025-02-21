@@ -9,7 +9,7 @@ use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
 use crate::types::hand::{Hand, RateHands};
-use super::{PokerPhase, PokerPhaseBehavior, PokerPhaseAnte, PokerPhaseBetting, PokerPhaseDealing, PokerPhaseDrawing, PokerPhaseFirstBetting, PokerPhaseSecondBetting, PokerPhaseShowdown};
+use super::{PokerPhase, PokerPhaseBehavior, PokerPhaseAnte, PokerPhaseBetting, PokerPhaseDealing, PokerPhaseDrawingDiscarding, PokerPhaseDrawingDealing, PokerPhaseFirstBetting, PokerPhaseSecondBetting, PokerPhaseShowdown};
 
 impl PokerPhaseAnte {
     pub(super) fn new(
@@ -183,7 +183,7 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
         if self.0.last_man_standing() {
             Some(PokerPhase::Showdown(PokerPhaseShowdown::from_betting(self.0)))
         } else {
-            Some(PokerPhase::Drawing(PokerPhaseDrawing::from_first_betting(self)))
+            Some(PokerPhase::DrawingDiscarding(PokerPhaseDrawingDiscarding::from_first_betting(self)))
         }
     }
 
@@ -201,16 +201,16 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
 }
 
 impl PokerPhaseSecondBetting {
-    pub(super) fn from_drawing(drawing_phase: PokerPhaseDrawing) -> Self {
-        let phase_player_queue = drawing_phase.game_table.clone_player_queue();
+    pub(super) fn from_drawing_dealing(drawing_dealing_phase: PokerPhaseDrawingDealing) -> Self {
+        let phase_player_queue = drawing_dealing_phase.game_table.clone_player_queue();
         PokerPhaseSecondBetting(
             PokerPhaseBetting{
-                rpc_action_broadcaster: drawing_phase.rpc_action_broadcaster,
-                game_table: drawing_phase.game_table,
-                card_deck: drawing_phase.card_deck,
+                rpc_action_broadcaster: drawing_dealing_phase.rpc_action_broadcaster,
+                game_table: drawing_dealing_phase.game_table,
+                card_deck: drawing_dealing_phase.card_deck,
                 phase_player_queue,
-                player_hands: drawing_phase.player_hands,
-                player_bets: drawing_phase._player_bets
+                player_hands: drawing_dealing_phase.player_hands,
+                player_bets: drawing_dealing_phase._player_bets
             }
         )
     }

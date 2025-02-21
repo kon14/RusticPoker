@@ -22,7 +22,8 @@ pub(crate) enum PokerPhase {
     Ante(PokerPhaseAnte),
     Dealing(PokerPhaseDealing),
     FirstBetting(PokerPhaseFirstBetting),
-    Drawing(PokerPhaseDrawing),
+    DrawingDiscarding(PokerPhaseDrawingDiscarding),
+    DrawingDealing(PokerPhaseDrawingDealing),
     SecondBetting(PokerPhaseSecondBetting),
     Showdown(PokerPhaseShowdown),
 }
@@ -55,7 +56,8 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Ante(phase) => phase.act(),
             PokerPhase::Dealing(phase) => phase.act(),
             PokerPhase::FirstBetting(phase) => phase.act(),
-            PokerPhase::Drawing(phase) => phase.act(),
+            PokerPhase::DrawingDiscarding(phase) => phase.act(),
+            PokerPhase::DrawingDealing(phase) => phase.act(),
             PokerPhase::SecondBetting(phase) => phase.act(),
             PokerPhase::Showdown(phase) => phase.act(),
         }
@@ -66,7 +68,8 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Ante(phase) => phase.is_phase_completed(),
             PokerPhase::Dealing(phase) => phase.is_phase_completed(),
             PokerPhase::FirstBetting(phase) => phase.is_phase_completed(),
-            PokerPhase::Drawing(phase) => phase.is_phase_completed(),
+            PokerPhase::DrawingDiscarding(phase) => phase.is_phase_completed(),
+            PokerPhase::DrawingDealing(phase) => phase.is_phase_completed(),
             PokerPhase::SecondBetting(phase) => phase.is_phase_completed(),
             PokerPhase::Showdown(phase) => phase.is_phase_completed(),
         }
@@ -77,7 +80,8 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Ante(phase) => phase.next_phase(),
             PokerPhase::Dealing(phase) => phase.next_phase(),
             PokerPhase::FirstBetting(phase) => phase.next_phase(),
-            PokerPhase::Drawing(phase) => phase.next_phase(),
+            PokerPhase::DrawingDiscarding(phase) => phase.next_phase(),
+            PokerPhase::DrawingDealing(phase) => phase.next_phase(),
             PokerPhase::SecondBetting(phase) => phase.next_phase(),
             PokerPhase::Showdown(phase) => phase.next_phase(),
         }
@@ -88,7 +92,8 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Ante(phase) => phase.get_active_player_id(),
             PokerPhase::Dealing(phase) => phase.get_active_player_id(),
             PokerPhase::FirstBetting(phase) => phase.get_active_player_id(),
-            PokerPhase::Drawing(phase) => phase.get_active_player_id(),
+            PokerPhase::DrawingDiscarding(phase) => phase.get_active_player_id(),
+            PokerPhase::DrawingDealing(phase) => phase.get_active_player_id(),
             PokerPhase::SecondBetting(phase) => phase.get_active_player_id(),
             PokerPhase::Showdown(phase) => phase.get_active_player_id(),
         }
@@ -99,7 +104,8 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Ante(phase) => phase.get_player_bet_amounts(),
             PokerPhase::Dealing(phase) => phase.get_player_bet_amounts(),
             PokerPhase::FirstBetting(phase) => phase.get_player_bet_amounts(),
-            PokerPhase::Drawing(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::DrawingDiscarding(phase) => phase.get_player_bet_amounts(),
+            PokerPhase::DrawingDealing(phase) => phase.get_player_bet_amounts(),
             PokerPhase::SecondBetting(phase) => phase.get_player_bet_amounts(),
             PokerPhase::Showdown(phase) => phase.get_player_bet_amounts(),
         }
@@ -130,7 +136,8 @@ impl PokerPhase {
             PokerPhase::Ante(phase) => phase.get_action_progression(),
             PokerPhase::Dealing(phase) => phase.get_action_progression(),
             PokerPhase::FirstBetting(phase) => phase.get_action_progression(),
-            PokerPhase::Drawing(phase) => phase.get_action_progression(),
+            PokerPhase::DrawingDiscarding(phase) => phase.get_action_progression(),
+            PokerPhase::DrawingDealing(phase) => phase.get_action_progression(),
             PokerPhase::SecondBetting(phase) => phase.get_action_progression(),
             PokerPhase::Showdown(phase) => phase.get_action_progression(),
         }
@@ -158,7 +165,7 @@ impl PokerPhase {
         discarded_cards: Option<DiscardedCards>,
     ) -> Result<(), AppError> {
         match self {
-            PokerPhase::Drawing(drawing_phase) => drawing_phase.player_discards(player_id, discarded_cards),
+            PokerPhase::DrawingDiscarding(discard_phase) => discard_phase.player_discards(player_id, discarded_cards),
             _ => Err(AppError::invalid_request("Game not currently in Drawing phase!")),
         }
     }
@@ -171,7 +178,8 @@ impl PokerPhase {
             PokerPhase::Ante(phase) => &phase.game_table,
             PokerPhase::Dealing(phase) => &phase.game_table,
             PokerPhase::FirstBetting(phase) => &phase.game_table,
-            PokerPhase::Drawing(phase) => &phase.game_table,
+            PokerPhase::DrawingDiscarding(phase) => &phase.game_table,
+            PokerPhase::DrawingDealing(phase) => &phase.game_table,
             PokerPhase::SecondBetting(phase) => &phase.game_table,
             PokerPhase::Showdown(phase) => &phase.game_table,
         }
@@ -184,7 +192,34 @@ impl PokerPhase {
             PokerPhase::FirstBetting(phase) => Some(get_cards_from_hands(&phase.player_hands)),
             PokerPhase::SecondBetting(phase) => Some(get_cards_from_hands(&phase.player_hands)),
             PokerPhase::Showdown(phase) => Some(get_cards_from_hands(&phase.player_hands)),
-            PokerPhase::Drawing(phase) => {
+            // TODO: refactor
+            PokerPhase::DrawingDiscarding(phase) => {
+                let player_hand_cards = get_cards_from_hands(&phase.player_hands);
+                let player_cards = player_hand_cards
+                    .into_iter()
+                    .map(|(player_id, hand_cards)| {
+                        let Some(hand_cards) = hand_cards else {
+                            return (player_id, None);
+                        };
+
+                        let remaining_cards = phase
+                            .player_discarded_cards
+                            .get(&player_id)
+                            .and_then(|discarded_cards| discarded_cards.as_ref())
+                            .map_or(hand_cards.clone(), |discarded_cards| {
+                                hand_cards
+                                    .iter()
+                                    .filter(|card| discarded_cards.contains(card))
+                                    .cloned()
+                                    .collect()
+                            });
+
+                        (player_id, Some(remaining_cards))
+                    })
+                    .collect();
+                Some(player_cards)
+            },
+            PokerPhase::DrawingDealing(phase) => {
                 let player_hand_cards = get_cards_from_hands(&phase.player_hands);
                 let player_cards = player_hand_cards
                     .into_iter()
