@@ -15,12 +15,6 @@ use crate::game::phase::progression::ActionProgression;
 use super::{PokerPhaseBetting, PokerPhaseFirstBetting, PokerPhaseSecondBetting};
 
 #[derive(Clone, Debug)]
-pub struct BettingRound {
-    player_folds: HashMap<Uuid, bool>,
-    player_actions: HashMap<Uuid, BettingRoundAction>,
-}
-
-#[derive(Clone, Debug)]
 pub(crate) enum BettingRoundAction {
     Bet(u64),
     Call,
@@ -35,7 +29,6 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
     fn act(&mut self) {
         // Player actions handled via RPC calls.
         // Timeout actions handled via a callback.
-
         let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
@@ -74,6 +67,12 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
                 PokerPhase::SecondBetting(ref mut phase) => Some(&mut phase.0),
                 _ => None,
             } {
+                if let Some((_, high_bettors)) = betting_phase.get_highest_bet_with_bettors() {
+                    if high_bettors.contains(&active_player_id) {
+                        betting_phase.player_calls(active_player_id)?
+                    }
+                }
+
                 betting_phase.player_folds(active_player_id)?;
             }
             Ok(())
@@ -184,6 +183,8 @@ impl PokerPhaseBetting {
             // TODO: currently assuming a single pot
             let credit_pot = self.game_table.credit_pots.values_mut().next().unwrap();
             player_credits.use_credits(added_credits, credit_pot)?;
+
+            self.player_bets.insert(player_id, bet_credits);
         };
 
         Ok(())
@@ -216,6 +217,8 @@ impl PokerPhaseBetting {
                 }
             })
             .collect();
+        println!("Highest bet amount: {high_bet_amount}");
+        println!("high bettors: {high_bettors:?}");
         Some((high_bet_amount, high_bettors))
     }
 }

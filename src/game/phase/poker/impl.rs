@@ -271,7 +271,8 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
     }
 
     fn is_phase_completed(&self) -> bool {
-        todo!()
+        // todo!()
+        true
     }
 }
 
