@@ -60,14 +60,14 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
                     .map(|(player_id, bet)| (player_id.to_string(), bet))
                     .collect()
             });
-        // let poker_phase = todo!();
-        proto::game_state::MatchState {
+        let poker_phase = state.poker_phase_specifics.into();
+         proto::game_state::MatchState {
             match_id: state.match_id.to_string(),
             player_info,
             credit_pots,
             own_cards,
             player_bet_amounts,
-            // poker_phase,
+            poker_phase: Some(poker_phase),
         }
     }
 }
@@ -114,6 +114,77 @@ impl From<LobbyInfoPublic> for proto::LobbyInfoPublic {
             host_player_id: lobby_info.host_player_id.to_string(),
             player_count: lobby_info.player_count,
             status: lobby_info.status as i32,
+        }
+    }
+}
+
+impl From<MatchStatePhaseSpecificsAsPlayer> for proto::game_state::PokerPhase {
+    fn from(phase: MatchStatePhaseSpecificsAsPlayer) -> Self {
+        let phase = match phase {
+            MatchStatePhaseSpecificsAsPlayer::Ante => proto::game_state::poker_phase::Phase::Ante({}),
+            MatchStatePhaseSpecificsAsPlayer::FirstBetting(phase) => {
+                proto::game_state::poker_phase::Phase::FirstBetting(
+                    proto::game_state::poker_phase::PokerPhaseBetting {
+                        highest_bet_amount: Some(phase.highest_bet_amount),
+                        own_bet_amount: Some(phase.own_bet_amount),
+                    }
+                )
+            }
+            MatchStatePhaseSpecificsAsPlayer::Drawing(phase) => {
+                proto::game_state::poker_phase::Phase::Drawing({
+                    let own_discarded_cards = phase.own_discarded_cards
+                        .into_iter()
+                        .map(|card| card.into())
+                        .collect();
+                    proto::game_state::poker_phase::PokerPhaseDrawing {
+                        discard_stage: phase.discard_stage,
+                        own_discarded_cards,
+                    }
+                })
+            }
+            MatchStatePhaseSpecificsAsPlayer::SecondBetting(phase) => {
+                proto::game_state::poker_phase::Phase::SecondBetting(
+                    proto::game_state::poker_phase::PokerPhaseBetting {
+                        highest_bet_amount: Some(phase.highest_bet_amount),
+                        own_bet_amount: Some(phase.own_bet_amount),
+                    }
+                )
+            }
+            MatchStatePhaseSpecificsAsPlayer::Showdown(phase) => {
+                let winning_rank: proto::game_state::poker_phase::poker_phase_showdown::showdown_results::PokerHandRank = phase.winning_rank.into();
+                let pot_distribution = phase.pot_distribution
+                    .into_values()
+                    .map(|distribution| distribution.into())
+                    .collect();
+                proto::game_state::poker_phase::Phase::Showdown({
+                    let winner_ids = phase.winner_ids
+                        .into_iter()
+                        .map(|winner_id| winner_id.into())
+                        .collect();
+                    let results = proto::game_state::poker_phase::poker_phase_showdown::ShowdownResults {
+                        winning_rank: winning_rank as i32,
+                        winner_ids,
+                        pot_distribution,
+                    };
+                    proto::game_state::poker_phase::PokerPhaseShowdown {
+                        results: Some(results),
+                    }
+                })
+            }
+        };
+        proto::game_state::PokerPhase {
+            phase: Some(phase),
+        }
+    }
+}
+
+impl From<ShowdownPotDistribution> for proto::game_state::poker_phase::poker_phase_showdown::showdown_results::ShowdownPotDistribution {
+    fn from(distribution: ShowdownPotDistribution) -> Self {
+        Self {
+            pot_id: distribution.pot_id.into(),
+            player_ids: distribution.player_ids.into_iter().map(|player_id| player_id.into()).collect(),
+            total_credits: distribution.total_credits,
+            credits_per_winner: distribution.credits_per_winner,
         }
     }
 }

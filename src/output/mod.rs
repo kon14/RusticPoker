@@ -70,14 +70,71 @@ impl MatchState {
             })
             .transpose()?;
 
+        let poker_phase_specifics = self.poker_phase_specifics
+            .as_player(player_id)?;
+
         let state = MatchStateAsPlayer {
             match_id: self.match_id,
             player_info: self.player_info.clone(),
             player_cards,
             credit_pots: self.credit_pots.clone(),
             player_bet_amounts: self.player_bet_amounts.clone(),
+            poker_phase_specifics,
         };
         Ok(state)
+    }
+}
+
+impl MatchStatePhaseSpecifics {
+    fn as_player(&self, player_id: &Uuid) -> Result<MatchStatePhaseSpecificsAsPlayer, AppError> {
+        match self {
+            MatchStatePhaseSpecifics::Ante => Ok(MatchStatePhaseSpecificsAsPlayer::Ante),
+            MatchStatePhaseSpecifics::FirstBetting(phase) => {
+                let own_bet_amount = phase.player_bet_amounts
+                    .get(player_id)
+                    .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?
+                    .clone();
+                Ok(MatchStatePhaseSpecificsAsPlayer::FirstBetting(
+                    MatchStatePhaseSpecificsBettingAsPlayer {
+                        highest_bet_amount: phase.highest_bet_amount,
+                        own_bet_amount,
+                    }
+                ))
+            },
+            MatchStatePhaseSpecifics::Drawing(phase) => {
+                let own_discarded_cards = phase.discarded_cards
+                    .get(player_id)
+                    .cloned()
+                    .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?;
+                Ok(MatchStatePhaseSpecificsAsPlayer::Drawing(
+                    MatchStatePhaseSpecificsDrawingAsPlayer {
+                        discard_stage: phase.discard_stage,
+                        own_discarded_cards,
+                    }
+                ))
+            },
+            MatchStatePhaseSpecifics::SecondBetting(phase) => {
+                let own_bet_amount = phase.player_bet_amounts
+                    .get(player_id)
+                    .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?
+                    .clone();
+                Ok(MatchStatePhaseSpecificsAsPlayer::SecondBetting(
+                    MatchStatePhaseSpecificsBettingAsPlayer {
+                        highest_bet_amount: phase.highest_bet_amount,
+                        own_bet_amount,
+                    }
+                ))
+            },
+            MatchStatePhaseSpecifics::Showdown(phase) => {
+                Ok(MatchStatePhaseSpecificsAsPlayer::Showdown(
+                    MatchStatePhaseSpecificsShowdownAsPlayer {
+                        winning_rank: phase.winning_rank.clone(),
+                        winner_ids: phase.winner_ids.clone(),
+                        pot_distribution: phase.pot_distribution.clone(),
+                    }
+                ))
+            },
+        }
     }
 }
 
@@ -164,12 +221,15 @@ impl MatchState {
         let player_cards = game_phase_w.get_player_cards();
         let credit_pots = game_phase_w.get_table().credit_pots.clone();
         let player_bet_amounts = game_phase_w.get_player_bet_amounts();
+        let poker_phase_specifics = todo!();
+
         MatchState {
             match_id: r#match.match_id,
             player_info,
             player_cards,
             credit_pots,
             player_bet_amounts,
+            poker_phase_specifics,
         }
     }
 }

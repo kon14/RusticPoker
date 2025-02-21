@@ -36,7 +36,7 @@ pub(crate) struct PokerPhaseDrawingDiscarding {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct DiscardedCards(HashSet<Card>);
+pub(crate) struct DiscardedCards(HashSet<Card>); // TODO: consider Vec<Card> (but discard in hand order, not discard input order)
 
 impl DiscardedCards {
     pub(crate) fn try_from_proto(request: proto::RespondDrawingPhaseRequest) -> Result<Option<Self>, AppError> {
