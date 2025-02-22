@@ -129,4 +129,8 @@ impl GamePhase {
     pub fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
         self.poker_phase.get_phase_specifics()
     }
+
+    pub fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.poker_phase.can_player_act()
+    }
 }

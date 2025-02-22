@@ -77,6 +77,15 @@ impl PokerPhaseBehavior for PokerPhaseDrawingDiscarding {
             }
         )
     }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.game_table
+            .player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, true))
+            .collect()
+    }
 }
 
 impl PokerPhaseDrawingDiscarding {

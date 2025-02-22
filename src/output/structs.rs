@@ -55,6 +55,7 @@ pub(super) struct MatchState {
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecifics,
+    pub(super) can_player_act: HashMap<Uuid, bool>,
 }
 
 #[derive(Clone, Debug)]
@@ -65,6 +66,7 @@ pub(super) struct MatchStateAsPlayer {
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecificsAsPlayer,
+    pub(super) can_player_act: bool,
 }
 
 #[derive(Clone, Debug)]

@@ -92,6 +92,16 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
         unreachable!()
     }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        let active_player_id = self.get_active_player_id().unwrap();
+        self.game_table
+            .player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, player_id == active_player_id))
+            .collect()
+    }
 }
 
 impl PokerPhaseBetting {

@@ -73,6 +73,11 @@ impl MatchState {
         let poker_phase_specifics = self.poker_phase_specifics
             .as_player(player_id)?;
 
+        let can_player_act = self.can_player_act
+            .get(&player_id)
+            .cloned()
+            .ok_or(AppError::internal("Invalid state [DEBUG]"))?; // TODO
+
         let state = MatchStateAsPlayer {
             match_id: self.match_id,
             player_info: self.player_info.clone(),
@@ -80,6 +85,7 @@ impl MatchState {
             credit_pots: self.credit_pots.clone(),
             player_bet_amounts: self.player_bet_amounts.clone(),
             poker_phase_specifics,
+            can_player_act
         };
         Ok(state)
     }
@@ -223,6 +229,7 @@ impl MatchState {
         let credit_pots = game_phase_w.get_table().credit_pots.clone();
         let player_bet_amounts = game_phase_w.get_player_bet_amounts();
         let poker_phase_specifics = game_phase_w.get_phase_specifics();
+        let can_player_act = game_phase_w.can_player_act();
 
         MatchState {
             match_id: r#match.match_id,
@@ -231,6 +238,7 @@ impl MatchState {
             credit_pots,
             player_bet_amounts,
             poker_phase_specifics,
+            can_player_act,
         }
     }
 }

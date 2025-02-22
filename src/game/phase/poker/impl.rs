@@ -1,5 +1,4 @@
 use std::collections::{HashMap, VecDeque};
-use std::ops::Deref;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -79,6 +78,15 @@ impl PokerPhaseBehavior for PokerPhaseAnte {
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
         MatchStatePhaseSpecifics::Ante
     }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.game_table
+            .player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, false))
+            .collect()
+    }
 }
 
 impl PokerPhaseDealing {
@@ -145,6 +153,15 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
 
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
         MatchStatePhaseSpecifics::Dealing
+    }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.game_table
+            .player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, false))
+            .collect()
     }
 }
 
@@ -215,6 +232,10 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
             self.0.get_betting_phase_specifics()
         )
     }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.0.can_player_act()
+    }
 }
 
 impl PokerPhaseSecondBetting {
@@ -268,6 +289,10 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
             self.0.get_betting_phase_specifics()
         )
     }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.0.can_player_act()
+    }
 }
 
 impl PokerPhaseShowdown {
@@ -308,6 +333,15 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
             //     pot_distribution: ,
             // }
         )
+    }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        self.game_table
+            .player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, false))
+            .collect()
     }
 }
 

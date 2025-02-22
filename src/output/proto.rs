@@ -62,12 +62,13 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
             });
         let poker_phase = state.poker_phase_specifics.into();
          proto::game_state::MatchState {
-            match_id: state.match_id.to_string(),
-            player_info,
-            credit_pots,
-            own_cards,
-            player_bet_amounts,
-            poker_phase: Some(poker_phase),
+             match_id: state.match_id.to_string(),
+             player_info,
+             credit_pots,
+             own_cards,
+             player_bet_amounts,
+             poker_phase: Some(poker_phase),
+             can_i_act: state.can_player_act,
         }
     }
 }

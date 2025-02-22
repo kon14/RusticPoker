@@ -51,6 +51,8 @@ pub(super) trait PokerPhaseBehavior {
     }
 
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics;
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool>;
 }
 
 impl PokerPhaseBehavior for PokerPhase {
@@ -123,6 +125,18 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::DrawingDealing(phase) => phase.get_phase_specifics(),
             PokerPhase::SecondBetting(phase) => phase.get_phase_specifics(),
             PokerPhase::Showdown(phase) => phase.get_phase_specifics(),
+        }
+    }
+
+    fn can_player_act(&self) -> HashMap<Uuid, bool> {
+        match self {
+            PokerPhase::Ante(phase) => phase.can_player_act(),
+            PokerPhase::Dealing(phase) => phase.can_player_act(),
+            PokerPhase::FirstBetting(phase) => phase.can_player_act(),
+            PokerPhase::DrawingDiscarding(phase) => phase.can_player_act(),
+            PokerPhase::DrawingDealing(phase) => phase.can_player_act(),
+            PokerPhase::SecondBetting(phase) => phase.can_player_act(),
+            PokerPhase::Showdown(phase) => phase.can_player_act(),
         }
     }
 }

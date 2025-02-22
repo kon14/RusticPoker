@@ -59,8 +59,8 @@ message GameState {
     map<string, MatchStateCreditPot> credit_pots = 3;
     repeated Card own_cards = 4;
     map<string, uint64> player_bet_amounts = 5; // only live players, pre-showdown
-    // TODO: field for current actor/actors ???
     PokerPhase poker_phase = 6; // phase-specific data
+    bool can_i_act = 7;
 
     message MatchStatePlayerPublicInfo {
       string player_id = 1;
@@ -80,8 +80,6 @@ message GameState {
   }
 
   message PokerPhase {
-    // TODO: all phases should include acting player/s and perhaps a can_act bool for self
-
     oneof phase {
       google.protobuf.Empty ante = 1;
       google.protobuf.Empty dealing = 2;
