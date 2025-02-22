@@ -15,6 +15,7 @@ use crate::types::hand::{Hand, RateHands};
 use crate::game::GameTable;
 use super::progression::ActionProgression;
 use crate::common::error::AppError;
+use crate::output::MatchStatePhaseSpecifics;
 use phase::*;
 
 #[derive(Clone, Debug)]
@@ -48,6 +49,8 @@ pub(super) trait PokerPhaseBehavior {
     fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         None
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics;
 }
 
 impl PokerPhaseBehavior for PokerPhase {
@@ -110,6 +113,18 @@ impl PokerPhaseBehavior for PokerPhase {
             PokerPhase::Showdown(phase) => phase.get_player_bet_amounts(),
         }
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        match self {
+            PokerPhase::Ante(phase) => phase.get_phase_specifics(),
+            PokerPhase::Dealing(phase) => phase.get_phase_specifics(),
+            PokerPhase::FirstBetting(phase) => phase.get_phase_specifics(),
+            PokerPhase::DrawingDiscarding(phase) => phase.get_phase_specifics(),
+            PokerPhase::DrawingDealing(phase) => phase.get_phase_specifics(),
+            PokerPhase::SecondBetting(phase) => phase.get_phase_specifics(),
+            PokerPhase::Showdown(phase) => phase.get_phase_specifics(),
+        }
+    }
 }
 
 impl PokerPhase {
@@ -166,7 +181,7 @@ impl PokerPhase {
     ) -> Result<(), AppError> {
         match self {
             PokerPhase::DrawingDiscarding(discard_phase) => discard_phase.player_discards(player_id, discarded_cards),
-            _ => Err(AppError::invalid_request("Game not currently in Drawing phase!")),
+            _ => Err(AppError::invalid_request("Game not currently in DrawingDiscard phase!")),
         }
     }
 }

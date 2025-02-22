@@ -1,5 +1,6 @@
 use std::array;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 use futures::StreamExt;
 use uuid::Uuid;
 
@@ -8,6 +9,7 @@ use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use crate::game::phase::poker::r#impl::shift_queue;
 use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
+use crate::output::{MatchStatePhaseSpecifics, MatchStatePhaseSpecificsDrawing};
 use super::{PokerPhaseDrawingDealing, PokerPhaseDrawingDiscarding};
 
 impl PokerPhaseBehavior for PokerPhaseDrawingDealing {
@@ -43,6 +45,25 @@ impl PokerPhaseBehavior for PokerPhaseDrawingDealing {
 
     fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         Some(self._player_bets.clone())
+    }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        let discarded_cards = self.player_discarded_cards
+            .iter()
+            .map(|(player_id, discarded_cards)| {
+                let cards = discarded_cards
+                    .as_ref()
+                    .map(|discarded| discarded.deref().clone())
+                    .unwrap_or(HashSet::with_capacity(0));
+                (player_id.clone(), cards)
+            })
+            .collect();
+        MatchStatePhaseSpecifics::Drawing(
+            MatchStatePhaseSpecificsDrawing {
+                discard_stage: false,
+                discarded_cards,
+            }
+        )
     }
 }
 

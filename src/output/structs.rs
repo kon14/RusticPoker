@@ -84,8 +84,9 @@ pub(crate) struct LobbyInfoPublic {
 }
 
 #[derive(Clone, Debug)]
-pub(super) enum MatchStatePhaseSpecifics {
+pub(crate) enum MatchStatePhaseSpecifics {
     Ante,
+    Dealing,
     FirstBetting(MatchStatePhaseSpecificsBetting),
     Drawing(MatchStatePhaseSpecificsDrawing),
     SecondBetting(MatchStatePhaseSpecificsBetting),
@@ -93,27 +94,28 @@ pub(super) enum MatchStatePhaseSpecifics {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct MatchStatePhaseSpecificsBetting {
-    pub(super) highest_bet_amount: u64,
-    pub(super) player_bet_amounts: HashMap<Uuid, u64>, // I don't really need this. part of parent struct. could be convenient for mapping tho
+pub(crate) struct MatchStatePhaseSpecificsBetting {
+    pub(crate) highest_bet_amount: u64,
+    pub(crate) player_bet_amounts: HashMap<Uuid, u64>, // I don't really need this. part of parent struct. could be convenient for mapping tho
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct MatchStatePhaseSpecificsDrawing {
-    pub(super) discard_stage: bool,
-    pub(super) discarded_cards: HashMap<Uuid, HashSet<Card>>, // TODO: Vec if ordered
+pub(crate) struct MatchStatePhaseSpecificsDrawing {
+    pub(crate) discard_stage: bool,
+    pub(crate) discarded_cards: HashMap<Uuid, HashSet<Card>>, // TODO: Vec if ordered
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct MatchStatePhaseSpecificsShowdown {
-    pub(super) winning_rank: HandRank,
-    pub(super) winner_ids: HashSet<Uuid>,
-    pub(super) pot_distribution: HashMap<Uuid, ShowdownPotDistribution>,
+pub(crate) struct MatchStatePhaseSpecificsShowdown {
+    pub(crate) winning_rank: HandRank,
+    pub(crate) winner_ids: HashSet<Uuid>,
+    pub(crate) pot_distribution: HashMap<Uuid, ShowdownPotDistribution>,
 }
 
 #[derive(Clone, Debug)]
 pub(super) enum MatchStatePhaseSpecificsAsPlayer {
     Ante,
+    Dealing,
     FirstBetting(MatchStatePhaseSpecificsBettingAsPlayer),
     Drawing(MatchStatePhaseSpecificsDrawingAsPlayer),
     SecondBetting(MatchStatePhaseSpecificsBettingAsPlayer),

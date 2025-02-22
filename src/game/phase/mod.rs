@@ -17,6 +17,7 @@ use crate::types::hand::RateHands;
 use crate::game::GameTable;
 use crate::output::GameStateBroadcaster;
 use crate::common::error::AppError;
+use crate::output::MatchStatePhaseSpecifics;
 use poker::*;
 
 #[derive(Clone, Debug)]
@@ -123,5 +124,9 @@ impl GamePhase {
 
     pub fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         self.poker_phase.get_player_bet_amounts()
+    }
+
+    pub fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        self.poker_phase.get_phase_specifics()
     }
 }

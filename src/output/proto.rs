@@ -122,6 +122,7 @@ impl From<MatchStatePhaseSpecificsAsPlayer> for proto::game_state::PokerPhase {
     fn from(phase: MatchStatePhaseSpecificsAsPlayer) -> Self {
         let phase = match phase {
             MatchStatePhaseSpecificsAsPlayer::Ante => proto::game_state::poker_phase::Phase::Ante({}),
+            MatchStatePhaseSpecificsAsPlayer::Dealing => proto::game_state::poker_phase::Phase::Dealing({}),
             MatchStatePhaseSpecificsAsPlayer::FirstBetting(phase) => {
                 proto::game_state::poker_phase::Phase::FirstBetting(
                     proto::game_state::poker_phase::PokerPhaseBetting {

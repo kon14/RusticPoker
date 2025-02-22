@@ -12,7 +12,10 @@ use crate::game::GamePhase;
 use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use crate::game::phase::poker::r#impl::shift_queue;
 use crate::game::phase::progression::ActionProgression;
+use crate::output::{MatchStatePhaseSpecifics, MatchStatePhaseSpecificsBetting};
 use super::{PokerPhaseBetting, PokerPhaseFirstBetting, PokerPhaseSecondBetting};
+
+// TODO: second betting phase, lurking .unwrap() panic!
 
 #[derive(Clone, Debug)]
 pub(crate) enum BettingRoundAction {
@@ -42,6 +45,7 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
             return false;
         };
         let remaining_player_count = self.player_hands.len();
+        // TODO: fix edge-case, first player calls, everyone matches...
         if matched_bettors.len() != remaining_player_count {
             return false;
         }
@@ -67,6 +71,7 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
                 PokerPhase::SecondBetting(ref mut phase) => Some(&mut phase.0),
                 _ => None,
             } {
+                // NOTE: matched bettors already checked in is_phase_completed()
                 if let Some((_, high_bettors)) = betting_phase.get_highest_bet_with_bettors() {
                     if high_bettors.contains(&active_player_id) {
                         betting_phase.player_calls(active_player_id)?
@@ -82,6 +87,10 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
 
     fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         Some(self.player_bets.clone())
+    }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        unreachable!()
     }
 }
 
@@ -101,6 +110,13 @@ impl PokerPhaseBetting {
 
     pub(crate) fn last_man_standing(&self) -> bool {
         self.player_hands.len() == 1
+    }
+
+    pub(crate) fn get_betting_phase_specifics(&self) -> MatchStatePhaseSpecificsBetting {
+        MatchStatePhaseSpecificsBetting {
+            highest_bet_amount: self.get_highest_bet().unwrap(),
+            player_bet_amounts: self.player_bets.clone(),
+        }
     }
 }
 
@@ -198,6 +214,7 @@ impl PokerPhaseBetting {
     }
 
     fn get_highest_bet(&self) -> Option<u64> {
+        // TODO: Drop Option, bets are carried over
         if self.player_bets.is_empty() {
             return None;
         }

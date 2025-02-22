@@ -3,7 +3,7 @@ mod proto;
 mod structs;
 
 pub(crate) use broadcaster::GameStateBroadcaster;
-pub(crate) use structs::{GameState, GameStateAsPlayer, LobbyInfoPublic};
+pub(crate) use structs::{GameState, GameStateAsPlayer, LobbyInfoPublic, MatchStatePhaseSpecifics, MatchStatePhaseSpecificsBetting, MatchStatePhaseSpecificsDrawing, MatchStatePhaseSpecificsShowdown};
 
 use std::collections::HashMap;
 use chrono::Utc;
@@ -89,6 +89,7 @@ impl MatchStatePhaseSpecifics {
     fn as_player(&self, player_id: &Uuid) -> Result<MatchStatePhaseSpecificsAsPlayer, AppError> {
         match self {
             MatchStatePhaseSpecifics::Ante => Ok(MatchStatePhaseSpecificsAsPlayer::Ante),
+            MatchStatePhaseSpecifics::Dealing => Ok(MatchStatePhaseSpecificsAsPlayer::Dealing),
             MatchStatePhaseSpecifics::FirstBetting(phase) => {
                 let own_bet_amount = phase.player_bet_amounts
                     .get(player_id)
@@ -221,7 +222,7 @@ impl MatchState {
         let player_cards = game_phase_w.get_player_cards();
         let credit_pots = game_phase_w.get_table().credit_pots.clone();
         let player_bet_amounts = game_phase_w.get_player_bet_amounts();
-        let poker_phase_specifics = todo!();
+        let poker_phase_specifics = game_phase_w.get_phase_specifics();
 
         MatchState {
             match_id: r#match.match_id,

@@ -84,10 +84,11 @@ message GameState {
 
     oneof phase {
       google.protobuf.Empty ante = 1;
-      PokerPhaseBetting first_betting = 2;
-      PokerPhaseDrawing drawing = 3;
-      PokerPhaseBetting second_betting = 4;
-      PokerPhaseShowdown showdown = 5;
+      google.protobuf.Empty dealing = 2;
+      PokerPhaseBetting first_betting = 3;
+      PokerPhaseDrawing drawing = 4;
+      PokerPhaseBetting second_betting = 5;
+      PokerPhaseShowdown showdown = 6;
     }
 
     message PokerPhaseBetting {

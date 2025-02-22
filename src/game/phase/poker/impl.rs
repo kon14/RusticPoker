@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::ops::Deref;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -9,6 +10,7 @@ use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
 use crate::types::hand::{Hand, RateHands};
+use crate::output::{MatchStatePhaseSpecifics, MatchStatePhaseSpecificsShowdown};
 use super::{PokerPhase, PokerPhaseBehavior, PokerPhaseAnte, PokerPhaseBetting, PokerPhaseDealing, PokerPhaseDrawingDiscarding, PokerPhaseDrawingDealing, PokerPhaseFirstBetting, PokerPhaseSecondBetting, PokerPhaseShowdown};
 
 impl PokerPhaseAnte {
@@ -73,6 +75,10 @@ impl PokerPhaseBehavior for PokerPhaseAnte {
             .collect();
         Some(player_bet_amounts)
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        MatchStatePhaseSpecifics::Ante
+    }
 }
 
 impl PokerPhaseDealing {
@@ -136,6 +142,10 @@ impl PokerPhaseBehavior for PokerPhaseDealing {
             .collect();
         Some(player_bet_amounts)
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        MatchStatePhaseSpecifics::Dealing
+    }
 }
 
 impl PokerPhaseFirstBetting {
@@ -198,6 +208,12 @@ impl PokerPhaseBehavior for PokerPhaseFirstBetting {
     fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         self.0.get_player_bet_amounts()
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        MatchStatePhaseSpecifics::FirstBetting(
+            self.0.get_betting_phase_specifics()
+        )
+    }
 }
 
 impl PokerPhaseSecondBetting {
@@ -244,6 +260,12 @@ impl PokerPhaseBehavior for PokerPhaseSecondBetting {
     fn get_player_bet_amounts(&self) -> Option<HashMap<Uuid, u64>> {
         self.0.get_player_bet_amounts()
     }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        MatchStatePhaseSpecifics::SecondBetting(
+            self.0.get_betting_phase_specifics()
+        )
+    }
 }
 
 impl PokerPhaseShowdown {
@@ -273,6 +295,17 @@ impl PokerPhaseBehavior for PokerPhaseShowdown {
     fn is_phase_completed(&self) -> bool {
         // todo!()
         true
+    }
+
+    fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
+        MatchStatePhaseSpecifics::Showdown(
+            todo!()
+            // MatchStatePhaseSpecificsShowdown {
+            //     winning_rank: ,
+            //     winner_ids: ,
+            //     pot_distribution: ,
+            // }
+        )
     }
 }
 
