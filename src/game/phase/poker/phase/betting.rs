@@ -32,6 +32,7 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
     fn act(&mut self) {
         // Player actions handled via RPC calls.
         // Timeout actions handled via a callback.
+        self.first_round_action = false;
         let _ = shift_queue(&mut self.phase_player_queue); // TODO
     }
 
@@ -45,8 +46,7 @@ impl PokerPhaseBehavior for PokerPhaseBetting {
             return false;
         };
         let remaining_player_count = self.player_hands.len();
-        // TODO: fix edge-case, first player calls, everyone matches...
-        if matched_bettors.len() != remaining_player_count {
+        if self.first_round_action || matched_bettors.len() != remaining_player_count {
             return false;
         }
         true

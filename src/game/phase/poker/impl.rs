@@ -160,6 +160,7 @@ impl PokerPhaseFirstBetting {
                 phase_player_queue,
                 player_hands: dealing_phase.player_hands,
                 player_bets,
+                first_round_action: true,
             }
         )
     }
@@ -226,7 +227,8 @@ impl PokerPhaseSecondBetting {
                 card_deck: drawing_dealing_phase.card_deck,
                 phase_player_queue,
                 player_hands: drawing_dealing_phase.player_hands,
-                player_bets: drawing_dealing_phase._player_bets
+                player_bets: drawing_dealing_phase._player_bets,
+                first_round_action: true,
             }
         )
     }

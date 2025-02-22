@@ -21,6 +21,7 @@ pub(super) struct PokerPhaseBetting {
     pub(super) phase_player_queue: VecDeque<Uuid>,
     pub(super) player_hands: HashMap<Uuid, Hand>, // folded hands omitted
     pub(super) player_bets: HashMap<Uuid, u64>, // folded players omitted
+    pub(super) first_round_action: bool,
 
     // TODO: display current player (here or in wrapper struct)
     //       maybe use HashSet<Uuid> ? that way unordered round phases can omit past players...
