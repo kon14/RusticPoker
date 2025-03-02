@@ -6,10 +6,10 @@ use crate::lobby::LobbySettings;
 use crate::types::hand::HandRank;
 use crate::game::table::{CalculatedPlayerCredits, CreditPot};
 use crate::types::card::Card;
+use crate::types::stateful::StatefulCard;
 
 #[derive(Clone, Debug)]
 pub(crate) struct GameState {
-    pub(super) player_states: HashMap<Uuid, PlayerState>,
     pub(super) lobby_state: LobbyState,
     pub(super) match_state: Option<MatchState>,
     pub(super) timestamp: DateTime<Utc>,
@@ -17,16 +17,16 @@ pub(crate) struct GameState {
 
 #[derive(Clone, Debug)]
 pub(crate) struct GameStateAsPlayer {
-    pub(super) player_state: PlayerState,
+    pub(super) self_player_id: Uuid,
     pub(super) lobby_state: LobbyState,
     pub(super) match_state: Option<MatchStateAsPlayer>,
     pub(super) timestamp: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct PlayerState {
+pub(super) struct PlayerPublicInfo {
     pub(super) player_id: Uuid,
-    pub(super) name: String,
+    pub(super) player_name: String,
 }
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,7 @@ pub(super) struct LobbyState {
     pub(super) lobby_id: Uuid,
     pub(super) name: String,
     pub(super) host_player_id: Uuid,
-    pub(super) player_ids: HashSet<Uuid>,
+    pub(super) players: Vec<PlayerPublicInfo>,
     pub(super) status: LobbyStatus,
     pub(super) game_acceptance: HashMap<Uuid, bool>,
     pub(super) settings: LobbySettings,
@@ -51,7 +51,6 @@ pub(super) struct LobbyState {
 pub(super) struct MatchState {
     pub(super) match_id: Uuid,
     pub(super) player_info: HashMap<Uuid, GamePlayerPublicInfo>,
-    pub(super) player_cards: Option<HashMap<Uuid, Option<Vec<Card>>>>,
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecifics,
@@ -61,8 +60,7 @@ pub(super) struct MatchState {
 #[derive(Clone, Debug)]
 pub(super) struct MatchStateAsPlayer {
     pub(super) match_id: Uuid,
-    pub(super) player_info: HashMap<Uuid, GamePlayerPublicInfo>,
-    pub(super) player_cards: Option<Vec<Card>>,
+    pub(super) player_info: HashMap<Uuid, GamePlayerPublicInfoAsPlayer>,
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecificsAsPlayer,
@@ -72,9 +70,17 @@ pub(super) struct MatchStateAsPlayer {
 #[derive(Clone, Debug)]
 pub(super) struct GamePlayerPublicInfo {
     pub(super) player_id: Uuid,
-    // pub(super) name: String,
+    pub(super) player_name: String,
     pub(super) credits: CalculatedPlayerCredits,
-    pub(super) hand_card_count: u8,
+    pub(super) hand_cards: Option<Vec<StatefulCard>>,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct GamePlayerPublicInfoAsPlayer {
+    pub(super) player_id: Uuid,
+    pub(super) player_name: String,
+    pub(super) credits: CalculatedPlayerCredits,
+    pub(super) hand_cards: Option<Vec<HandCard>>,
 }
 
 pub(crate) struct LobbyInfoPublic {
@@ -102,9 +108,9 @@ pub(crate) struct MatchStatePhaseSpecificsBetting {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct MatchStatePhaseSpecificsDrawing {
-    pub(crate) discard_stage: bool,
-    pub(crate) discarded_cards: HashMap<Uuid, HashSet<Card>>, // TODO: Vec if ordered
+pub(crate) enum MatchStatePhaseSpecificsDrawing {
+    Discarding(DrawingStageDiscarding),
+    Dealing,
 }
 
 #[derive(Clone, Debug)]
@@ -127,13 +133,13 @@ pub(super) enum MatchStatePhaseSpecificsAsPlayer {
 #[derive(Clone, Debug)]
 pub(super) struct MatchStatePhaseSpecificsBettingAsPlayer {
     pub(super) highest_bet_amount: u64,
-    pub(super) own_bet_amount: u64,
+    pub(super) self_bet_amount: u64,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct MatchStatePhaseSpecificsDrawingAsPlayer {
-    pub(crate) discard_stage: bool,
-    pub(crate) own_discarded_cards: HashSet<Card>, // TODO: Vec if ordered
+pub(crate) enum MatchStatePhaseSpecificsDrawingAsPlayer {
+    Discarding(DrawingStageDiscarding),
+    Dealing,
 }
 
 #[derive(Clone, Debug)]
@@ -144,9 +150,21 @@ pub(crate) struct MatchStatePhaseSpecificsShowdownAsPlayer {
 }
 
 #[derive(Clone, Debug)]
+pub struct DrawingStageDiscarding {
+    pub(crate) player_discard_count: HashMap<Uuid, u8>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct ShowdownPotDistribution {
     pub(crate) pot_id: Uuid,
     pub(crate) player_ids: HashSet<Uuid>,
     pub(crate) total_credits: u64,
     pub(crate) credits_per_winner: u64,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum HandCard {
+    VisibleCard(Card),
+    HiddenCard,
+    DiscardedCard,
 }

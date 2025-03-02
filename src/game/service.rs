@@ -23,7 +23,7 @@ pub struct GameService {
 impl GameService {
     const LOBBY_BROADCAST_CHANNEL_CAPACITY: usize = 10;
 
-    pub async fn connect_rpc(&self) -> Result<(Uuid), AppError> {
+    pub async fn connect_rpc(&self) -> Result<Uuid, AppError> {
         let mut player_registry_w = self.player_registry.write().await;
         let player = Player::register();
         let player_id = player.player_id.clone();
@@ -37,7 +37,7 @@ impl GameService {
         todo!()
     }
 
-    pub async fn create_lobby_rpc(&self, name: String, player_id: Uuid) -> Result<(LobbyInfoPublic), AppError> {
+    pub async fn create_lobby_rpc(&self, name: String, player_id: Uuid) -> Result<LobbyInfoPublic, AppError> {
         {
             let player_lobby_map_r = self.player_lobby_map.read().await;
             if let Some(lobby_id) = player_lobby_map_r.get(&player_id) {
@@ -403,7 +403,7 @@ impl GameService {
         let stream = async_stream::try_stream! {
             // Stream Current State
             match lobby.state_broadcaster.build_state(None).await {
-                Ok(state) => match state.as_player(&player_id) {
+                Ok(state) => match state.as_player(player_id.clone()) {
                     Ok(state_as_player) => yield state_as_player,
                     Err(err) => eprintln!("{}", err),
                 },
@@ -416,7 +416,7 @@ impl GameService {
                     break;
                 };
 
-                if let Ok(game_state_as_player) = state.as_player(&player_id) {
+                if let Ok(game_state_as_player) = state.as_player(player_id) {
                     yield game_state_as_player;
                 }
             }

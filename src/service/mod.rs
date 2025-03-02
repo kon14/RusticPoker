@@ -13,10 +13,9 @@ use std::ops::Deref;
 use std::pin::Pin;
 use futures::Stream;
 use tokio::sync::RwLock;
-use rand::Rng;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
-use futures::stream::{StreamExt, TryStreamExt};
+use futures::stream::TryStreamExt;
 
 use crate::common::error::AppError;
 use crate::game::{DiscardedCards, GameService};
@@ -100,7 +99,7 @@ impl proto::rustic_poker_server::RusticPoker for RusticPokerService {
     }
 
     // TODO: return LobbyInfoPrivate instead
-    async fn create_lobby(&self, request: Request<proto::CreateLobbyRequest>) -> Result<Response<(proto::LobbyInfoPublic)>, Status> {
+    async fn create_lobby(&self, request: Request<proto::CreateLobbyRequest>) -> Result<Response<proto::LobbyInfoPublic>, Status> {
         let peer_address = extract_client_address!(request)?;
         let player_id = get_player_id!(self, &peer_address)?;
         let proto::CreateLobbyRequest { lobby_name } = request.into_inner();

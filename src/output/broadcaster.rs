@@ -1,12 +1,10 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tokio::sync::broadcast::Receiver;
-use uuid::Uuid;
 
 use crate::common::error::AppError;
 use crate::lobby::Lobby;
-use crate::output::structs::{MatchState, PlayerState};
+use crate::output::structs::{LobbyState, MatchState};
 use crate::player::PlayerRegistry;
 use super::GameState;
 
@@ -87,31 +85,16 @@ impl GameStateBroadcaster {
         };
         let r#match = lobby.r#match.clone();
 
-        let player_states = self.build_player_states(&lobby).await?;
-        let lobby_state = lobby.into();
+        let lobby_state = LobbyState::from_lobby(lobby, self.player_registry.clone()).await?;
         let match_state = match r#match {
             Some(r#match) => Some(MatchState::from_match(r#match).await),
             None => None,
         };
 
         let game_state = GameState::build(
-            player_states,
             lobby_state,
             match_state,
         );
         Ok(game_state)
-    }
-}
-
-impl GameStateBroadcaster {
-    async fn build_player_states(&self, lobby: &Lobby) -> Result<HashMap<Uuid, PlayerState>, AppError> {
-        let player_ids = lobby.player_ids.clone();
-        let player_registry_r = self.player_registry.read().await;
-        let players = player_registry_r.get_players(&player_ids).await?;
-        let players = players
-            .into_iter()
-            .map(|(player_id, player)| (player_id, player.into()))
-            .collect();
-        Ok(players)
     }
 }

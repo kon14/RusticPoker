@@ -5,7 +5,6 @@ pub(crate) use betting::BettingRoundAction;
 pub(crate) use drawing::{PokerPhaseDrawingDiscarding, PokerPhaseDrawingDealing, DiscardedCards};
 
 use std::collections::{HashMap, VecDeque};
-use std::ops::Deref;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 

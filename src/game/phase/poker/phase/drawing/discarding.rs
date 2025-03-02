@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -13,7 +12,7 @@ use crate::game::phase::poker::{PokerPhase, PokerPhaseBehavior};
 use crate::game::phase::poker::r#impl::shift_queue;
 use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
-use crate::output::{MatchStatePhaseSpecifics, MatchStatePhaseSpecificsDrawing};
+use crate::output::{DrawingStageDiscarding, MatchStatePhaseSpecifics, MatchStatePhaseSpecificsDrawing};
 use super::PokerPhaseDrawingDiscarding;
 
 impl PokerPhaseBehavior for PokerPhaseDrawingDiscarding {
@@ -60,21 +59,23 @@ impl PokerPhaseBehavior for PokerPhaseDrawingDiscarding {
     }
 
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
-        let discarded_cards = self.player_discarded_cards
+        let player_discard_count = self.player_discarded_cards
             .iter()
-            .map(|(player_id, discarded_cards)| {
-                let cards = discarded_cards
+            .map(|(player_id, cards)| {
+                let discard_count = cards
                     .as_ref()
-                    .map(|discarded| discarded.deref().clone())
-                    .unwrap_or(HashSet::with_capacity(0));
-                (player_id.clone(), cards)
+                    .map_or(0, |cards| cards.len())
+                    .try_into()
+                    .unwrap();
+                (player_id.clone(), discard_count)
             })
             .collect();
         MatchStatePhaseSpecifics::Drawing(
-            MatchStatePhaseSpecificsDrawing {
-                discard_stage: true,
-                discarded_cards,
-            }
+            MatchStatePhaseSpecificsDrawing::Discarding(
+                DrawingStageDiscarding {
+                    player_discard_count,
+                }
+            )
         )
     }
 

@@ -4,11 +4,11 @@ use chrono::{DateTime, Utc};
 use crate::service::proto;
 use super::structs::*;
 
-impl From<PlayerState> for proto::PlayerState {
-    fn from(state: PlayerState) -> Self {
-        proto::PlayerState {
-            player_id: state.player_id.to_string(),
-            name: state.name,
+impl From<PlayerPublicInfo> for proto::PlayerPublicInfo {
+    fn from(info: PlayerPublicInfo) -> Self {
+        proto::PlayerPublicInfo {
+            player_id: info.player_id.to_string(),
+            player_name: info.player_name,
         }
     }
 }
@@ -23,19 +23,25 @@ impl From<LobbyStatus> for proto::LobbyStatus {
     }
 }
 
-impl From<GamePlayerPublicInfo> for proto::game_state::match_state::MatchStatePlayerPublicInfo {
-    fn from(info: GamePlayerPublicInfo) -> Self {
+impl From<GamePlayerPublicInfoAsPlayer> for proto::game_state::match_state::MatchStatePlayerPublicInfo {
+    fn from(info: GamePlayerPublicInfoAsPlayer) -> Self {
         let starting_credits = info.credits.get_starting_credits();
         let pot_credits = info.credits.pot_credits
             .into_iter()
             .map(|(pot_id, credits)| (pot_id.to_string(), credits))
             .collect();
+        let hand_cards = info.hand_cards
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|hand_card| hand_card.into())
+            .collect();
         proto::game_state::match_state::MatchStatePlayerPublicInfo {
             player_id: info.player_id.to_string(),
+            player_name: info.player_name,
             starting_credits,
             remaining_credits: info.credits.remaining_credits,
             pot_credits,
-            hand_card_count: info.hand_card_count as u32,
+            hand_cards,
         }
     }
 }
@@ -50,9 +56,6 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
             .into_iter()
             .map(|(pot_id, pot)| (pot_id.to_string(), pot.into()))
             .collect();
-        let own_cards = state.player_cards
-            .map(|cards| cards.into_iter().map(|card| card.into()).collect::<Vec<_>>())
-            .unwrap_or_else(|| Vec::with_capacity(0));
         let player_bet_amounts = state.player_bet_amounts
             .map_or_else(HashMap::new, |player_bet_amounts| {
                 player_bet_amounts
@@ -65,7 +68,6 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
              match_id: state.match_id.to_string(),
              player_info,
              credit_pots,
-             own_cards,
              player_bet_amounts,
              poker_phase: Some(poker_phase),
              can_i_act: state.can_player_act,
@@ -76,7 +78,7 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
 impl From<GameStateAsPlayer> for proto::GameState {
     fn from(state: GameStateAsPlayer) -> Self {
         proto::GameState {
-            player_state: Some(state.player_state.into()),
+            self_player_id: state.self_player_id.into(),
             lobby_state: Some(state.lobby_state.into()),
             match_state: state.match_state.map(|state| state.into()),
             timestamp: Some(chrono_to_prost_timestamp(state.timestamp)),
@@ -86,9 +88,9 @@ impl From<GameStateAsPlayer> for proto::GameState {
 
 impl From<LobbyState> for proto::LobbyState {
     fn from(state: LobbyState) -> Self {
-        let player_ids = state.player_ids
+        let players = state.players
             .into_iter()
-            .map(|player_id| player_id.to_string())
+            .map(|player| player.into())
             .collect();
         let game_acceptance = state.game_acceptance
             .into_iter()
@@ -99,7 +101,7 @@ impl From<LobbyState> for proto::LobbyState {
             lobby_id: state.lobby_id.to_string(),
             name: state.name,
             host_player_id: state.host_player_id.to_string(),
-            player_ids,
+            players,
             status: status as i32,
             game_acceptance,
             settings: Some(state.settings.into()),
@@ -128,19 +130,14 @@ impl From<MatchStatePhaseSpecificsAsPlayer> for proto::game_state::PokerPhase {
                 proto::game_state::poker_phase::Phase::FirstBetting(
                     proto::game_state::poker_phase::PokerPhaseBetting {
                         highest_bet_amount: Some(phase.highest_bet_amount),
-                        own_bet_amount: Some(phase.own_bet_amount),
+                        self_bet_amount: Some(phase.self_bet_amount),
                     }
                 )
             }
             MatchStatePhaseSpecificsAsPlayer::Drawing(phase) => {
                 proto::game_state::poker_phase::Phase::Drawing({
-                    let own_discarded_cards = phase.own_discarded_cards
-                        .into_iter()
-                        .map(|card| card.into())
-                        .collect();
                     proto::game_state::poker_phase::PokerPhaseDrawing {
-                        discard_stage: phase.discard_stage,
-                        own_discarded_cards,
+                        stage: Some(phase.into()),
                     }
                 })
             }
@@ -148,7 +145,7 @@ impl From<MatchStatePhaseSpecificsAsPlayer> for proto::game_state::PokerPhase {
                 proto::game_state::poker_phase::Phase::SecondBetting(
                     proto::game_state::poker_phase::PokerPhaseBetting {
                         highest_bet_amount: Some(phase.highest_bet_amount),
-                        own_bet_amount: Some(phase.own_bet_amount),
+                        self_bet_amount: Some(phase.self_bet_amount),
                     }
                 )
             }
@@ -187,6 +184,40 @@ impl From<ShowdownPotDistribution> for proto::game_state::poker_phase::poker_pha
             player_ids: distribution.player_ids.into_iter().map(|player_id| player_id.into()).collect(),
             total_credits: distribution.total_credits,
             credits_per_winner: distribution.credits_per_winner,
+        }
+    }
+}
+
+impl From<MatchStatePhaseSpecificsDrawingAsPlayer> for proto::game_state::poker_phase::poker_phase_drawing::DrawingStage {
+    fn from(drawing_stage: MatchStatePhaseSpecificsDrawingAsPlayer) -> Self {
+        let proto_stage = match drawing_stage {
+            MatchStatePhaseSpecificsDrawingAsPlayer::Discarding(discard_stage) => {
+                let player_discard_count = discard_stage.player_discard_count
+                    .into_iter()
+                    .map(|(player_id, discard_count)| (player_id.into(), discard_count as u32))
+                    .collect();
+                let proto_discard_stage = proto::game_state::poker_phase::poker_phase_drawing::drawing_stage::DrawingStageDiscarding {
+                    player_discard_count,
+                };
+                proto::game_state::poker_phase::poker_phase_drawing::drawing_stage::Stage::Discarding(proto_discard_stage)
+            },
+            MatchStatePhaseSpecificsDrawingAsPlayer::Dealing => proto::game_state::poker_phase::poker_phase_drawing::drawing_stage::Stage::Dealing(()),
+        };
+        Self {
+            stage: Some(proto_stage)
+        }
+    }
+}
+
+impl From<HandCard> for proto::game_state::match_state::match_state_player_public_info::HandCard {
+    fn from(card: HandCard) -> Self {
+        let inner_card = match card {
+            HandCard::VisibleCard(card) => proto::game_state::match_state::match_state_player_public_info::hand_card::Card::VisibleCard(card.into()),
+            HandCard::HiddenCard => proto::game_state::match_state::match_state_player_public_info::hand_card::Card::HiddenCard(()),
+            HandCard::DiscardedCard => proto::game_state::match_state::match_state_player_public_info::hand_card::Card::DiscardedCard(()),
+        };
+        Self {
+            card: Some(inner_card),
         }
     }
 }

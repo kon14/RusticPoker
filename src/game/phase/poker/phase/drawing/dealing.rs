@@ -1,7 +1,5 @@
 use std::array;
-use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
-use futures::StreamExt;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::game::phase::poker::phase::PokerPhaseSecondBetting;
@@ -48,21 +46,8 @@ impl PokerPhaseBehavior for PokerPhaseDrawingDealing {
     }
 
     fn get_phase_specifics(&self) -> MatchStatePhaseSpecifics {
-        let discarded_cards = self.player_discarded_cards
-            .iter()
-            .map(|(player_id, discarded_cards)| {
-                let cards = discarded_cards
-                    .as_ref()
-                    .map(|discarded| discarded.deref().clone())
-                    .unwrap_or(HashSet::with_capacity(0));
-                (player_id.clone(), cards)
-            })
-            .collect();
         MatchStatePhaseSpecifics::Drawing(
-            MatchStatePhaseSpecificsDrawing {
-                discard_stage: false,
-                discarded_cards,
-            }
+            MatchStatePhaseSpecificsDrawing::Dealing,
         )
     }
 

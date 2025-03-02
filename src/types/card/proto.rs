@@ -76,7 +76,7 @@ impl From<Card> for proto::Card {
 }
 
 impl TryFrom<proto::Card> for Card {
-    type Error = (AppError);
+    type Error = AppError;
 
     fn try_from(card: proto::Card) -> Result<Self, Self::Error> {
         let rank = proto::card::CardRank::try_from(card.rank)

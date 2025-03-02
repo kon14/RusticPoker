@@ -1,11 +1,10 @@
 mod proto;
 mod rank;
-mod tie_breakers;
+pub(super) mod tie_breakers;
 
 pub(crate) use rank::*;
 
 use std::cmp::Ordering;
-use std::fmt::Display;
 use thiserror::Error;
 use itertools::Itertools;
 use crate::types::{
@@ -15,10 +14,10 @@ use crate::types::{
 
 #[derive(Eq, Clone, Debug, Hash)]
 pub(crate) struct Hand {
-    pub raw_hand_str: String, // eg: "AD KD QD JD 10D"
-    pub cards: [Card; 5],
-    pub rank: HandRank,
-    tie_breakers: Option<TieBreakers>,
+    pub(crate) raw_hand_str: String, // eg: "AD KD QD JD 10D"
+    pub(crate) cards: [Card; 5],
+    pub(crate) rank: HandRank,
+    pub(crate) tie_breakers: Option<TieBreakers>,
 }
 
 #[derive(Error, PartialEq, Debug)]

@@ -4,16 +4,14 @@ mod progression;
 pub(crate) use poker::{PokerPhase, BettingRoundAction, DiscardedCards};
 
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::r#match::MatchStartPlayers;
-use crate::types::card::Card;
+use crate::types::stateful::StatefulCard;
 use crate::types::deck::CardDeck;
-use crate::types::hand::RateHands;
 use crate::game::GameTable;
 use crate::output::GameStateBroadcaster;
 use crate::common::error::AppError;
@@ -118,7 +116,7 @@ impl GamePhase {
         self.poker_phase.get_table()
     }
 
-    pub fn get_player_cards(&self) -> Option<HashMap<Uuid, Option<Vec<Card>>>> {
+    pub fn get_player_cards(&self) -> Option<HashMap<Uuid, Option<Vec<StatefulCard>>>> {
         self.poker_phase.get_player_cards()
     }
 

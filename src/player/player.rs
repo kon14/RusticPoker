@@ -4,7 +4,7 @@ use uuid::Uuid;
 #[derive(Eq, PartialEq, Hash)] // object-level equality
 pub struct Player {
     pub player_id: Uuid,
-    // pub name: String,
+    pub player_name: String,
     pub total_credits: u64,
     // events => calculate after table actions
     // pub available_credits: u64,
@@ -17,6 +17,7 @@ impl Player {
     pub fn register() -> Self {
         Player {
             player_id: Uuid::new_v4(),
+            player_name: "Anonymous".to_string(), // TODO
             total_credits: Self::REGISTRATION_CREDITS,
         }
     }

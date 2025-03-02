@@ -3,49 +3,45 @@ mod proto;
 mod structs;
 
 pub(crate) use broadcaster::GameStateBroadcaster;
-pub(crate) use structs::{GameState, GameStateAsPlayer, LobbyInfoPublic, MatchStatePhaseSpecifics, MatchStatePhaseSpecificsBetting, MatchStatePhaseSpecificsDrawing, MatchStatePhaseSpecificsShowdown};
+pub(crate) use structs::{GameState, GameStateAsPlayer, LobbyInfoPublic, MatchStatePhaseSpecifics, MatchStatePhaseSpecificsBetting, MatchStatePhaseSpecificsDrawing, DrawingStageDiscarding, HandCard};
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use chrono::Utc;
-use itertools::Itertools;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::common::error::AppError;
 use crate::lobby::Lobby;
-use crate::player::Player;
+use crate::player::{Player, PlayerRegistry};
 use crate::r#match::Match;
 use structs::*;
 
 impl GameState {
     pub fn build(
-        player_states: HashMap<Uuid, PlayerState>,
         lobby_state: LobbyState,
         match_state: Option<MatchState>,
     ) -> Self {
         GameState {
-            player_states,
             lobby_state,
             match_state,
             timestamp: Utc::now(),
         }
     }
 
-    pub fn as_player(&self, player_id: &Uuid) -> Result<GameStateAsPlayer, AppError> {
-        let Some(player_state) = self.player_states.get(player_id) else {
-            return Err(AppError::unauthorized(
-                format!("Player ({}) not participating in lobby ({})!", player_id, self.lobby_state.lobby_id)
-            ));
-        };
-
-        let player_state = player_state.clone();
+    pub fn as_player(&self, player_id: Uuid) -> Result<GameStateAsPlayer, AppError> {
         let lobby_state = self.lobby_state.clone();
         let mut own_match_state = None;
         if let Some(match_state) = self.match_state.as_ref() {
-            own_match_state = Some(match_state.as_player(player_id)?.clone())
+            let is_showdown = match match_state.poker_phase_specifics {
+                MatchStatePhaseSpecifics::Showdown(_) => true,
+                _ => false,
+            };
+            own_match_state = Some(match_state.as_player(&player_id, is_showdown)?.clone())
         };
 
         let state = GameStateAsPlayer {
-            player_state,
+            self_player_id: player_id,
             lobby_state,
             match_state: own_match_state,
             timestamp: self.timestamp,
@@ -54,21 +50,52 @@ impl GameState {
     }
 }
 
+impl LobbyState {
+    pub async fn from_lobby(lobby: Lobby, player_registry_arc: Arc<RwLock<PlayerRegistry>>) -> Result<LobbyState, AppError> {
+        let players = Self::get_players(&lobby, player_registry_arc).await?;
+        let status: LobbyStatus = (&lobby).into();
+        let game_acceptance =
+            lobby
+                .player_ids
+                .iter()
+                .map(|player_id| {
+                    let is_accepted = lobby.game_acceptance
+                        .as_ref()
+                        .map_or(false, |set| set.contains(player_id));
+                    (*player_id, is_accepted)
+                })
+                .collect::<HashMap<_, _>>();
+        Ok(
+            LobbyState {
+                lobby_id: lobby.lobby_id,
+                name: lobby.name,
+                host_player_id: lobby.host_player_id,
+                players,
+                status,
+                game_acceptance,
+                settings: lobby.settings,
+            }
+        )
+    }
+
+    async fn get_players(lobby: &Lobby, player_registry_arc: Arc<RwLock<PlayerRegistry>>) -> Result<Vec<PlayerPublicInfo>, AppError> {
+        let player_ids = lobby.player_ids.clone();
+        let player_registry_r = player_registry_arc.read().await;
+        let players = player_registry_r.get_players(&player_ids).await?;
+        let players = players
+            .into_values()
+            .map(|player| player.into())
+            .collect();
+        Ok(players)
+    }
+}
 
 impl MatchState {
-    pub fn as_player(&self, player_id: &Uuid) -> Result<MatchStateAsPlayer, AppError> {
-        let player_cards = self.player_cards
-            .as_ref()
-            .map(|player_cards| {
-                player_cards
-                    .get(player_id)
-                    .map(|hand| hand.clone())
-                    .flatten()
-                    .ok_or_else(|| AppError::unauthorized(
-                        format!("Player ({}) not participating in match ({})!", player_id, self.match_id)
-                    ))
-            })
-            .transpose()?;
+    pub fn as_player(&self, player_id: &Uuid, is_showdown: bool) -> Result<MatchStateAsPlayer, AppError> {
+        let player_info = self.player_info
+            .values()
+            .map(|player_info| (player_info.player_id, player_info.as_player(player_id, !is_showdown)))
+            .collect();
 
         let poker_phase_specifics = self.poker_phase_specifics
             .as_player(player_id)?;
@@ -80,8 +107,7 @@ impl MatchState {
 
         let state = MatchStateAsPlayer {
             match_id: self.match_id,
-            player_info: self.player_info.clone(),
-            player_cards,
+            player_info,
             credit_pots: self.credit_pots.clone(),
             player_bet_amounts: self.player_bet_amounts.clone(),
             poker_phase_specifics,
@@ -97,38 +123,37 @@ impl MatchStatePhaseSpecifics {
             MatchStatePhaseSpecifics::Ante => Ok(MatchStatePhaseSpecificsAsPlayer::Ante),
             MatchStatePhaseSpecifics::Dealing => Ok(MatchStatePhaseSpecificsAsPlayer::Dealing),
             MatchStatePhaseSpecifics::FirstBetting(phase) => {
-                let own_bet_amount = phase.player_bet_amounts
+                let self_bet_amount = phase.player_bet_amounts
                     .get(player_id)
                     .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?
                     .clone();
                 Ok(MatchStatePhaseSpecificsAsPlayer::FirstBetting(
                     MatchStatePhaseSpecificsBettingAsPlayer {
                         highest_bet_amount: phase.highest_bet_amount,
-                        own_bet_amount,
+                        self_bet_amount,
                     }
                 ))
             },
             MatchStatePhaseSpecifics::Drawing(phase) => {
-                let own_discarded_cards = phase.discarded_cards
-                    .get(player_id)
-                    .cloned()
-                    .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?;
-                Ok(MatchStatePhaseSpecificsAsPlayer::Drawing(
-                    MatchStatePhaseSpecificsDrawingAsPlayer {
-                        discard_stage: phase.discard_stage,
-                        own_discarded_cards,
-                    }
-                ))
+                let phase_as_player = match phase {
+                    MatchStatePhaseSpecificsDrawing::Discarding(discard_phase) => {
+                        MatchStatePhaseSpecificsDrawingAsPlayer::Discarding(discard_phase.clone())
+                    },
+                    MatchStatePhaseSpecificsDrawing::Dealing => {
+                        MatchStatePhaseSpecificsDrawingAsPlayer::Dealing
+                    },
+                };
+                Ok(MatchStatePhaseSpecificsAsPlayer::Drawing(phase_as_player))
             },
             MatchStatePhaseSpecifics::SecondBetting(phase) => {
-                let own_bet_amount = phase.player_bet_amounts
+                let self_bet_amount = phase.player_bet_amounts
                     .get(player_id)
                     .ok_or(AppError::internal(format!("Player ({player_id}) missing")))?
                     .clone();
                 Ok(MatchStatePhaseSpecificsAsPlayer::SecondBetting(
                     MatchStatePhaseSpecificsBettingAsPlayer {
                         highest_bet_amount: phase.highest_bet_amount,
-                        own_bet_amount,
+                        self_bet_amount,
                     }
                 ))
             },
@@ -153,33 +178,64 @@ impl GamePlayerPublicInfo {
             .player_credits
             .clone();
 
-        let cards_in_hand = &game_phase_w
+        let player_cards = &game_phase_w
             .get_player_cards();
 
         player_credits
             .into_iter()
             .map(|(player_id, self_credits)| {
-                let self_hand_card_count = cards_in_hand
+                let hand_cards = player_cards
                     .as_ref()
                     .and_then(|map| map.get(&player_id))
-                    .and_then(|cards_option| cards_option.as_ref())
-                    .map_or(0, |cards| cards.len() as u8);
+                    .cloned()
+                    .flatten();
                 let info = GamePlayerPublicInfo {
                     player_id: player_id.clone(),
+                    player_name: "Anonymous".to_string(), // TODO
                     credits: self_credits,
-                    hand_card_count: self_hand_card_count,
+                    hand_cards,
                 };
                 (player_id, info)
             })
             .collect()
     }
+
+    pub fn as_player(
+        &self,
+        player_id: &Uuid,
+        mask_foreign_cards: bool,
+    ) -> GamePlayerPublicInfoAsPlayer {
+        let mut player_info = self.clone();
+
+        let show_card = *player_id == player_info.player_id || !mask_foreign_cards;
+        let hand_cards = match player_info.hand_cards {
+            None => None,
+            Some(cards) => {
+                Some(cards
+                    .into_iter()
+                    .map(|card| match (card.discarded, show_card) {
+                        (true, _) => HandCard::DiscardedCard,
+                        (false, true) => HandCard::VisibleCard(card.card),
+                        (false, false) => HandCard::HiddenCard,
+                    })
+                    .collect())
+            }
+        };
+
+        GamePlayerPublicInfoAsPlayer {
+            player_id: player_info.player_id,
+            player_name: player_info.player_name,
+            credits: player_info.credits,
+            hand_cards,
+        }
+    }
 }
 
-impl From<Player> for PlayerState {
+impl From<Player> for PlayerPublicInfo {
     fn from(player: Player) -> Self {
-        PlayerState {
+        PlayerPublicInfo {
             player_id: player.player_id,
-            name: "Anonymous".to_string(), // player.name, // TODO
+            player_name:  player.player_name,
         }
     }
 }
@@ -191,32 +247,6 @@ impl From<&Lobby> for LobbyStatus {
             (true, false) => LobbyStatus::Matchmaking,
             (false, true) => LobbyStatus::InGame,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl From<Lobby> for LobbyState {
-    fn from(lobby: Lobby) -> Self {
-        let status: LobbyStatus = (&lobby).into();
-        let game_acceptance =
-            lobby
-                .player_ids
-                .iter()
-                .map(|player_id| {
-                    let is_accepted = lobby.game_acceptance
-                        .as_ref()
-                        .map_or(false, |set| set.contains(player_id));
-                    (*player_id, is_accepted)
-                })
-                .collect::<HashMap<_, _>>();
-        LobbyState {
-            lobby_id: lobby.lobby_id,
-            name: lobby.name,
-            host_player_id: lobby.host_player_id,
-            player_ids: lobby.player_ids,
-            status,
-            game_acceptance,
-            settings: lobby.settings,
         }
     }
 }
@@ -234,7 +264,6 @@ impl MatchState {
         MatchState {
             match_id: r#match.match_id,
             player_info,
-            player_cards,
             credit_pots,
             player_bet_amounts,
             poker_phase_specifics,

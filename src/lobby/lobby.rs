@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::sync::Arc;
-use futures::FutureExt;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 

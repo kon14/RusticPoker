@@ -9,7 +9,7 @@ use crate::game::phase::progression::ActionProgression;
 use crate::types::card::Card;
 use crate::types::deck::CardDeck;
 use crate::types::hand::{Hand, RateHands};
-use crate::output::{MatchStatePhaseSpecifics, MatchStatePhaseSpecificsShowdown};
+use crate::output::MatchStatePhaseSpecifics;
 use super::{PokerPhase, PokerPhaseBehavior, PokerPhaseAnte, PokerPhaseBetting, PokerPhaseDealing, PokerPhaseDrawingDiscarding, PokerPhaseDrawingDealing, PokerPhaseFirstBetting, PokerPhaseSecondBetting, PokerPhaseShowdown};
 
 impl PokerPhaseAnte {

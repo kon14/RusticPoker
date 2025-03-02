@@ -21,11 +21,11 @@ service RusticPoker {
   rpc CreateLobby(CreateLobbyRequest) returns (LobbyInfoPublic);
   rpc JoinLobby(JoinLobbyRequest) returns (google.protobuf.Empty);
   rpc LeaveLobby(google.protobuf.Empty) returns (google.protobuf.Empty);
-//  rpc KickLobbyPlayer(KickLobbyPlayerRequest) returns (google.protobuf.Empty);
+  //  rpc KickLobbyPlayer(KickLobbyPlayerRequest) returns (google.protobuf.Empty);
   rpc SetLobbyMatchmakingStatus(SetLobbyMatchmakingStatusRequest) returns (google.protobuf.Empty);
   rpc RespondLobbyMatchmaking(RespondLobbyMatchmakingRequest) returns (google.protobuf.Empty);
   rpc StartLobbyGame(google.protobuf.Empty) returns (google.protobuf.Empty);
-//  rpc SetLobbySettings(LobbySettings) returns (google.protobuf.Empty);
+  //  rpc SetLobbySettings(LobbySettings) returns (google.protobuf.Empty);
 
   // [Game]
   rpc RespondBettingPhase(RespondBettingPhaseRequest) returns (google.protobuf.Empty);
@@ -48,7 +48,7 @@ message LobbyInfoPublic {
 }
 
 message GameState {
-  PlayerState player_state = 1;
+  string self_player_id = 1;
   LobbyState lobby_state = 2;
   optional MatchState match_state = 3;
   google.protobuf.Timestamp timestamp = 4;
@@ -57,18 +57,25 @@ message GameState {
     string match_id = 1;
     map<string, MatchStatePlayerPublicInfo> player_info = 2;
     map<string, MatchStateCreditPot> credit_pots = 3;
-    repeated Card own_cards = 4;
-    map<string, uint64> player_bet_amounts = 5; // only live players, pre-showdown
-    PokerPhase poker_phase = 6; // phase-specific data
-    bool can_i_act = 7;
+    map<string, uint64> player_bet_amounts = 4; // only live players, pre-showdown
+    PokerPhase poker_phase = 5; // phase-specific data
+    bool can_i_act = 6;
 
     message MatchStatePlayerPublicInfo {
       string player_id = 1;
-      //  string name = 2;
-      uint64 starting_credits = 2;
-      uint64 remaining_credits = 3;
-      map<string, uint64> pot_credits = 4;
-      uint32 hand_card_count = 5;
+      string player_name = 2;
+      uint64 starting_credits = 3;
+      uint64 remaining_credits = 4;
+      map<string, uint64> pot_credits = 5;
+      repeated HandCard hand_cards = 6;
+
+      message HandCard {
+        oneof card {
+          Card visible_card = 1;
+          google.protobuf.Empty hidden_card = 2;
+          google.protobuf.Empty discarded_card = 3;
+        }
+      }
     }
 
     message MatchStateCreditPot {
@@ -91,13 +98,22 @@ message GameState {
 
     message PokerPhaseBetting {
       optional uint64 highest_bet_amount = 1;
-      optional uint64 own_bet_amount = 2;
+      optional uint64 self_bet_amount = 2;
     }
 
     message PokerPhaseDrawing {
-      bool discard_stage = 1;
-      repeated Card own_discarded_cards = 2;
-      // TODO: list map<Uuid, u32> player_discarded_card_count ? or infer by cand count in base state ?
+      DrawingStage stage = 1;
+
+      message DrawingStage {
+        oneof stage {
+          DrawingStageDiscarding discarding = 1;
+          google.protobuf.Empty dealing = 2;
+        }
+
+        message DrawingStageDiscarding {
+          map<string, uint32> player_discard_count = 2;
+        }
+      }
     }
 
     message PokerPhaseShowdown {
@@ -107,7 +123,7 @@ message GameState {
         PokerHandRank winning_rank = 1;
         repeated string winner_ids = 2;
         repeated ShowdownPotDistribution pot_distribution = 3;
-        // TODO: own_winnings uint64 (compound total)
+        // TODO: self_winnings uint64 (compound total)
         // TODO: pre-calculated did_I_win own result bool field
 
         enum PokerHandRank {
@@ -134,16 +150,16 @@ message GameState {
   }
 }
 
-message PlayerState {
+message PlayerPublicInfo {
   string player_id = 1;
-  string name = 2;
+  string player_name = 2;
 }
 
 message LobbyState {
   string lobby_id = 1;
   string name = 2;
   string host_player_id = 3;
-  repeated string player_ids = 4;
+  repeated PlayerPublicInfo players = 4;
   LobbyStatus status = 5;
   map<string, bool> game_acceptance = 6; // player_id -> bool
   LobbySettings settings = 7;
