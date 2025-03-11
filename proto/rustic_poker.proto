@@ -42,9 +42,11 @@ message ConnectRequest {
 message LobbyInfoPublic {
   string lobby_id = 1;
   string name = 2;
-  string host_player_id = 3;
+  PlayerPublicInfo host_player = 3;
   uint32 player_count = 4;
   LobbyStatus status = 5;
+  LobbySettings settings = 6;
+  bool is_joinable = 7;
 }
 
 message GameState {

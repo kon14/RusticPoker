@@ -16,6 +16,7 @@ pub struct Lobby {
     pub state_broadcaster: GameStateBroadcaster,
     pub name: String,
     pub host_player_id: Uuid,
+    pub host_player_name: String, // cached for output layer, avoid fetch from registry
     pub player_ids: HashSet<Uuid>,
     pub game_acceptance: Option<HashSet<Uuid>>, // per player
     pub r#match: Option<Match>,
@@ -28,6 +29,7 @@ impl Lobby {
         player_registry: Arc<RwLock<PlayerRegistry>>,
         lobby_name: String,
         host_player_id: Uuid,
+        host_player_name: String,
     ) -> Self {
         let lobby_id = Uuid::new_v4();
         let state_broadcaster = GameStateBroadcaster::new(
@@ -39,6 +41,7 @@ impl Lobby {
             state_broadcaster,
             name: lobby_name,
             host_player_id,
+            host_player_name,
             player_ids,
             game_acceptance: None,
             r#match: None,
@@ -54,6 +57,18 @@ impl Lobby {
             return Err(AppError::unauthorized("Cannot operate on lobby while matchmaking!"));
         }
         Ok(())
+    }
+
+    pub fn joinable_validation(&self) -> Result<(), AppError> {
+        self.lobby_locked_validation()?;
+        if self.player_ids.len() as u8 >= self.settings.max_players {
+            return Err(AppError::unauthorized("Cannot join lobby. Max player capacity already reached!"));
+        };
+        Ok(())
+    }
+
+    pub fn is_joinable(&self) -> bool {
+        self.joinable_validation().is_ok()
     }
 
     pub fn is_in_game(&self) -> bool {
@@ -149,7 +164,7 @@ impl Lobby {
     }
 
     pub async fn add_player(&mut self, player_id: Uuid) -> Result<(), AppError> {
-        self.lobby_locked_validation()?;
+        self.joinable_validation()?;
 
         self.player_ids.insert(player_id);
         self.clear_matchmaking().await; // technically can't join while matchmaking...

@@ -114,9 +114,11 @@ impl From<LobbyInfoPublic> for proto::LobbyInfoPublic {
         proto::LobbyInfoPublic {
             lobby_id: lobby_info.lobby_id.to_string(),
             name: lobby_info.name,
-            host_player_id: lobby_info.host_player_id.to_string(),
+            host_player: Some(lobby_info.host_player.into()),
             player_count: lobby_info.player_count,
             status: lobby_info.status as i32,
+            settings: Some(lobby_info.settings.into()),
+            is_joinable: lobby_info.is_joinable,
         }
     }
 }

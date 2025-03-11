@@ -86,9 +86,11 @@ pub(super) struct GamePlayerPublicInfoAsPlayer {
 pub(crate) struct LobbyInfoPublic {
     pub(super) lobby_id: Uuid,
     pub(super) name: String,
-    pub(super) host_player_id: Uuid,
+    pub(super) host_player: PlayerPublicInfo,
     pub(super) player_count: u32,
     pub(super) status: LobbyStatus,
+    pub(super) settings: LobbySettings,
+    pub(super) is_joinable: bool,
 }
 
 #[derive(Clone, Debug)]

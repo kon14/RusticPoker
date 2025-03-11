@@ -47,11 +47,20 @@ impl GameService {
             }
         }
 
+        let host_player = {
+            let player_registry_r = self.player_registry.read().await;
+            player_registry_r
+                .get_player(&player_id)
+                .await
+                .ok_or(AppError::Internal("Couldn't retrieve player information!".to_string()))?
+        };
+
         let lobby = Lobby::new(
             Self::LOBBY_BROADCAST_CHANNEL_CAPACITY,
             self.player_registry.clone(),
             name,
-            player_id,
+            host_player.player_id,
+            host_player.player_name,
         );
         let lobby_id = lobby.lobby_id;
         let lobby_public = lobby.clone().into();

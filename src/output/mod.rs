@@ -275,12 +275,19 @@ impl MatchState {
 impl From<Lobby> for LobbyInfoPublic {
     fn from(lobby: Lobby) -> Self {
         let status = LobbyStatus::from(&lobby);
+        let is_joinable = lobby.is_joinable();
+        let host_player = PlayerPublicInfo {
+            player_id: lobby.host_player_id,
+            player_name: lobby.host_player_name,
+        };
         LobbyInfoPublic {
             lobby_id: lobby.lobby_id,
             name: lobby.name,
-            host_player_id: lobby.host_player_id,
+            host_player,
             player_count: lobby.player_ids.len().try_into().unwrap(),
             status,
+            settings: lobby.settings,
+            is_joinable,
         }
     }
 }
