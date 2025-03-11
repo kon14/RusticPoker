@@ -10,7 +10,7 @@ use crate::r#match::MatchStartPlayers;
 #[derive(Clone, Debug)]
 pub struct GameTable {
     match_id: Uuid,
-    player_queue_immut: VecDeque<Uuid>,
+    pub(super) player_queue_immut: VecDeque<Uuid>,
     pub player_ids: HashSet<Uuid>,
     dealer_id: Uuid,
     pub credit_pots: HashMap<Uuid, CreditPot>,

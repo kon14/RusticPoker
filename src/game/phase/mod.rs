@@ -3,7 +3,7 @@ mod progression;
 
 pub(crate) use poker::{PokerPhase, BettingRoundAction, DiscardedCards};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use tokio::sync::{broadcast, RwLock};
@@ -130,5 +130,9 @@ impl GamePhase {
 
     pub fn can_player_act(&self) -> HashMap<Uuid, bool> {
         self.poker_phase.can_player_act()
+    }
+
+    pub fn get_table_players_order(&self) -> VecDeque<Uuid> {
+        self.poker_phase.get_table_players_order()
     }
 }

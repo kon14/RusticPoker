@@ -100,18 +100,14 @@ impl MatchState {
         let poker_phase_specifics = self.poker_phase_specifics
             .as_player(player_id)?;
 
-        let can_player_act = self.can_player_act
-            .get(&player_id)
-            .cloned()
-            .ok_or(AppError::internal("Invalid state [DEBUG]"))?; // TODO
-
         let state = MatchStateAsPlayer {
             match_id: self.match_id,
             player_info,
             credit_pots: self.credit_pots.clone(),
             player_bet_amounts: self.player_bet_amounts.clone(),
             poker_phase_specifics,
-            can_player_act
+            table_players_order: self.table_players_order.clone(),
+            active_player_ids: self.active_player_ids.clone(),
         };
         Ok(state)
     }
@@ -255,11 +251,15 @@ impl MatchState {
     pub(crate) async fn from_match(r#match: Match) -> Self {
         let player_info = GamePlayerPublicInfo::from_match(&r#match).await;
         let mut game_phase_w = r#match.phase.write().await;
-        let player_cards = game_phase_w.get_player_cards();
         let credit_pots = game_phase_w.get_table().credit_pots.clone();
         let player_bet_amounts = game_phase_w.get_player_bet_amounts();
         let poker_phase_specifics = game_phase_w.get_phase_specifics();
-        let can_player_act = game_phase_w.can_player_act();
+        let table_players_order = game_phase_w.get_table_players_order();
+        let active_player_ids = game_phase_w.can_player_act()
+            .into_iter()
+            .filter(|(_, active)| *active)
+            .map(|(player_id, _)| player_id)
+            .collect();
 
         MatchState {
             match_id: r#match.match_id,
@@ -267,7 +267,8 @@ impl MatchState {
             credit_pots,
             player_bet_amounts,
             poker_phase_specifics,
-            can_player_act,
+            table_players_order,
+            active_player_ids,
         }
     }
 }

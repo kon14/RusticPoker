@@ -61,7 +61,8 @@ message GameState {
     map<string, MatchStateCreditPot> credit_pots = 3;
     map<string, uint64> player_bet_amounts = 4; // only live players, pre-showdown
     PokerPhase poker_phase = 5; // phase-specific data
-    bool can_i_act = 6;
+    repeated string table_players_order = 6;
+    repeated string active_player_ids = 7;
 
     message MatchStatePlayerPublicInfo {
       string player_id = 1;

@@ -64,14 +64,23 @@ impl From<MatchStateAsPlayer> for proto::game_state::MatchState {
                     .collect()
             });
         let poker_phase = state.poker_phase_specifics.into();
+        let table_players_order = state.table_players_order
+            .into_iter()
+            .map(|player_id| player_id.into())
+            .collect();
+        let active_player_ids = state.active_player_ids
+            .into_iter()
+            .map(|player_id| player_id.into())
+            .collect();
          proto::game_state::MatchState {
              match_id: state.match_id.to_string(),
              player_info,
              credit_pots,
              player_bet_amounts,
              poker_phase: Some(poker_phase),
-             can_i_act: state.can_player_act,
-        }
+             table_players_order,
+             active_player_ids,
+         }
     }
 }
 

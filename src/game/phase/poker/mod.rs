@@ -3,7 +3,7 @@ mod r#impl;
 
 pub(crate) use phase::{BettingRoundAction, DiscardedCards};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -194,6 +194,11 @@ impl PokerPhase {
             PokerPhase::DrawingDiscarding(discard_phase) => discard_phase.player_discards(player_id, discarded_cards),
             _ => Err(AppError::invalid_request("Game not currently in DrawingDiscard phase!")),
         }
+    }
+
+    pub fn get_table_players_order(&self) -> VecDeque<Uuid> {
+        let table = self.get_table();
+        table.player_queue_immut.clone()
     }
 }
 

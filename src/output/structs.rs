@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -54,7 +54,8 @@ pub(super) struct MatchState {
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecifics,
-    pub(super) can_player_act: HashMap<Uuid, bool>,
+    pub(super) table_players_order: VecDeque<Uuid>,
+    pub(super) active_player_ids: HashSet<Uuid>,
 }
 
 #[derive(Clone, Debug)]
@@ -64,7 +65,8 @@ pub(super) struct MatchStateAsPlayer {
     pub(super) credit_pots: HashMap<Uuid, CreditPot>,
     pub(super) player_bet_amounts: Option<HashMap<Uuid, u64>>,
     pub(super) poker_phase_specifics: MatchStatePhaseSpecificsAsPlayer,
-    pub(super) can_player_act: bool,
+    pub(super) table_players_order: VecDeque<Uuid>,
+    pub(super) active_player_ids: HashSet<Uuid>,
 }
 
 #[derive(Clone, Debug)]
